@@ -583,6 +583,16 @@ img{max-width:100%}
     </details>
   </div>
 
+  <details class="setup" id="syncBox">
+    <summary>Sync Handy ⇄ PC</summary>
+    <div class="in backup">
+      <div class="sub" id="syncInfo">Verbinde jedes Gerät einmal mit deinem Schlüssel. Danach ist alles auf Handy und PC gleich.</div>
+      <input id="syncTok" type="password" autocomplete="off" placeholder="GitHub-Schlüssel (github_pat_…)" style="width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">
+      <div class="btns"><button class="btn" id="syncOn" type="button">Verbinden</button><button class="btn ghost" id="syncNow" type="button">Jetzt syncen</button><button class="btn ghost" id="syncOff" type="button">Trennen</button></div>
+      <div class="sub" id="syncMsg"></div>
+    </div>
+  </details>
+
   <details class="setup" id="backupBox">
     <summary>Backup (deine Daten sichern)</summary>
     <div class="in backup">
@@ -1468,6 +1478,52 @@ img{max-width:100%}
   document.addEventListener("visibilitychange",()=>{if(!document.hidden) render();});
 
   renderFixedEditor();
+  // ---------- Sync (GitHub, privates Repo) ----------
+  const SYNC_REPO="elmenchho/winterarc-data", SYNC_FILE="state.json", SK="wa-sync";
+  let syncTok=null, syncSha=null, syncBusy=false, syncAgain=false, syncTimer=null;
+  try{ syncTok=localStorage.getItem(SK)||null; }catch(e){}
+  const b64e=t=>btoa(unescape(encodeURIComponent(t))), b64d=t=>decodeURIComponent(escape(atob(t.replace(/\n/g,""))));
+  function sMsg(t){ $("syncMsg").textContent=t; $("sync").textContent=t; }
+  async function gh(method,body){
+    const r=await fetch("https://api.github.com/repos/"+SYNC_REPO+"/contents/"+SYNC_FILE+(method==="GET"?"?t="+Date.now():""),{method,headers:{"Authorization":"Bearer "+syncTok,"Accept":"application/vnd.github+json"},body:body?JSON.stringify(body):undefined,cache:"no-store"});
+    const j=await r.json().catch(()=>({})); return {status:r.status,j};
+  }
+  async function syncPull(){
+    if(!syncTok) return;
+    try{
+      const {status,j}=await gh("GET");
+      if(status===404){ syncSha=null; await syncPush(true); return; }
+      if(status===401||status===403){ sMsg("Sync: Schlüssel ungültig oder ohne Zugriff auf winterarc-data."); return; }
+      if(status!==200){ sMsg("Sync gerade nicht erreichbar."); return; }
+      syncSha=j.sha; const remote=JSON.parse(b64d(j.content));
+      if((remote._ts||0)>(state._ts||0)){ state=norm(remote); try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){} render(); renderEditors(); sMsg("Synchronisiert ✓ (vom anderen Gerät geladen)"); }
+      else if((state._ts||0)>(remote._ts||0)){ await syncPush(true); }
+      else sMsg("Synchronisiert ✓");
+    }catch(e){ sMsg("Offline – wird gesynct, sobald Internet da ist."); }
+  }
+  async function syncPush(now){
+    if(!syncTok) return;
+    if(!now){ clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncPush(true),1500); return; }
+    if(syncBusy){ syncAgain=true; return; }
+    syncBusy=true;
+    try{
+      const body={message:"sync",content:b64e(JSON.stringify(state))}; if(syncSha) body.sha=syncSha;
+      let {status,j}=await gh("PUT",body);
+      if(status===409||status===422){ const g=await gh("GET"); if(g.status===200){ const remote=JSON.parse(b64d(g.j.content)); syncSha=g.j.sha; if((remote._ts||0)>(state._ts||0)){ state=norm(remote); try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){} render(); renderEditors(); sMsg("Synchronisiert ✓"); syncBusy=false; return; } body.sha=syncSha; ({status,j}=await gh("PUT",body)); } }
+      if(status===200||status===201){ syncSha=j.content&&j.content.sha; sMsg("Synchronisiert ✓"); }
+      else if(status===401||status===403) sMsg("Sync: Schlüssel ungültig oder ohne Zugriff auf winterarc-data.");
+      else sMsg("Sync-Fehler ("+status+"), versuche es später nochmal.");
+    }catch(e){ sMsg("Offline – wird gesynct, sobald Internet da ist."); }
+    syncBusy=false; if(syncAgain){ syncAgain=false; syncPush(true); }
+  }
+  const _persist=persist; persist=function(){ state._ts=Date.now(); _persist(); syncPush(); };
+  function syncUi(){ $("syncInfo").textContent=syncTok?"Verbunden. Änderungen landen automatisch auf allen Geräten.":"Verbinde jedes Gerät einmal mit deinem Schlüssel. Danach ist alles auf Handy und PC gleich."; $("syncTok").hidden=!!syncTok; $("syncOn").hidden=!!syncTok; $("syncNow").hidden=!syncTok; $("syncOff").hidden=!syncTok; }
+  $("syncOn").onclick=async()=>{ const t=$("syncTok").value.trim(); if(!t) return; syncTok=t; try{localStorage.setItem(SK,t);}catch(e){} $("syncTok").value=""; syncUi(); sMsg("Verbinde …"); await syncPull(); };
+  $("syncNow").onclick=()=>syncPull();
+  $("syncOff").onclick=()=>{ syncTok=null; try{localStorage.removeItem(SK);}catch(e){} syncUi(); sMsg("Sync getrennt. Daten bleiben auf diesem Gerät."); };
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) syncPull(); });
+  syncUi(); if(syncTok) syncPull();
+
   // ---------- Backup ----------
   $("bkShare").onclick=async()=>{
     const txt="WINTERARC90:"+JSON.stringify(state);
