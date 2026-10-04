@@ -691,7 +691,7 @@ img{max-width:100%}
     "Du bist nicht müde. Du bist nur ungeübt im Durchziehen."
   ];
 
-  function rot(d){return (d-1)%4}
+  function rot(d){return (((d-3)%4)+4)%4} /* Rotation neu gestartet am 04.10.: Tag 4 = Arme */
   function dateOf(d){return new Date(START.getFullYear(),START.getMonth(),START.getDate()+d-1)}
   function todayIdx(){
     const n=new Date(); const t=new Date(n.getFullYear(),n.getMonth(),n.getDate());
