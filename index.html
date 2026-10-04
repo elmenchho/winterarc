@@ -1524,6 +1524,32 @@ img{max-width:100%}
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) syncPull(); });
   syncUi(); if(syncTok) syncPull();
 
+  // ---------- Import per Link (#import=...) ----------
+  function checkImport(){
+    const h=location.hash||""; if(!h.startsWith("#import=")) return;
+    let p=null; try{ const b=h.slice(8).replace(/-/g,"+").replace(/_/g,"/"); p=JSON.parse(decodeURIComponent(escape(atob(b)))); }catch(e){}
+    history.replaceState(null,"",location.pathname+location.search);
+    if(!p||!p.money) return;
+    const bar=document.createElement("div");
+    bar.style.cssText="position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:14px;box-shadow:0 18px 40px -12px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px";
+    bar.innerHTML='<b style="font-size:16px">Daten vom PC übernehmen?</b><span class="sub">Fixkosten, Schulden, Geldbeutel, Warum und To-dos kommen dazu. Was du am Handy schon abgehakt hast, bleibt.</span><div class="btns"><button class="btn" id="impYes" type="button">Übernehmen</button><button class="btn ghost" id="impNo" type="button">Abbrechen</button></div>';
+    document.body.appendChild(bar);
+    $("impNo").onclick=()=>bar.remove();
+    $("impYes").onclick=()=>{
+      const cur=state, m=cur.money||{};
+      const ids=new Set((p.money.tx||[]).map(x=>x.id));
+      const merged=Object.assign({},cur,{
+        money:Object.assign({},p.money,{tx:(p.money.tx||[]).concat((m.tx||[]).filter(x=>!ids.has(x.id))), kontoBase:m.kontoBase??p.money.kontoBase, income:(m.income!=null&&m.income!=="")?m.income:p.money.income}),
+        why:(cur.why&&(cur.why.reasons||[]).length)?cur.why:p.why,
+        todos:(cur.todos||[]).concat((p.todos||[]).filter(t=>!(cur.todos||[]).some(c=>c.id===t.id))),
+        supps:(cur.supps&&cur.supps.length)?cur.supps:p.supps,
+        days:Object.assign({},p.days||{},cur.days||{})
+      });
+      state=norm(merged); persist(); render(); renderEditors(); bar.remove(); toast("Daten übernommen ✓");
+    };
+  }
+  checkImport(); window.addEventListener("hashchange",checkImport);
+
   // ---------- Backup ----------
   $("bkShare").onclick=async()=>{
     const txt="WINTERARC90:"+JSON.stringify(state);
