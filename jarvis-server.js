@@ -210,7 +210,7 @@ const server = http.createServer(async (req, res) => {
       if (!text) return send(res, 400, { error: "leer" });
       const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
         method: "POST", headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
-        body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true } })
+        body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", apply_text_normalization: "on", voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true } })
       });
       if (!r.ok) { const t = await r.text(); return send(res, r.status === 401 ? 502 : r.status, { error: "Stimme: " + t.slice(0, 160) }); }
       const buf = Buffer.from(await r.arrayBuffer());
