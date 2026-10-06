@@ -1700,8 +1700,26 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
 
     J.speaking=false;
     function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking) listen(true); },250); }
+    const AUD=new Audio(); AUD.preload="auto"; let premium=false, audUnlocked=false;
+    function premiumOn(){ try{ return premium&&localStorage.getItem(LS+"-jvvoicename")!=="__device"&&!(localStorage.getItem(LS+"-jvvoicename")||"").length; }catch(e){ return premium; } }
+    async function speakPremium(text){
+      const S=srv(); if(!S) return false;
+      try{
+        const r=await fetch(S.url+"/api/tts",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({text})});
+        if(!r.ok) return false;
+        const url=URL.createObjectURL(await r.blob());
+        J.speaking=true; orb.classList.add("speak"); st.textContent="Jarvis spricht…";
+        AUD.onended=AUD.onerror=()=>{ URL.revokeObjectURL(url); speakDone(); };
+        AUD.src=url; await AUD.play(); return true;
+      }catch(e){ J.speaking=false; orb.classList.remove("speak"); return false; }
+    }
     function speak(text){
-      if(!(J.voice||J.talk)||!("speechSynthesis" in window)||!text){ if(J.talk) speakDone(); return; }
+      if(!(J.voice||J.talk)||!text){ if(J.talk) speakDone(); return; }
+      if(premiumOn()){ speakPremium(text.replace(/\[[^\]]*\]/g,"")).then(ok=>{ if(!ok) speakDevice(text); }); return; }
+      speakDevice(text);
+    }
+    function speakDevice(text){
+      if(!("speechSynthesis" in window)){ if(J.talk) speakDone(); return; }
       try{speechSynthesis.cancel(); const clean=text.replace(/\[[^\]]*\]/g,"").replace(/[*_#>`]/g,"");
         const u=new SpeechSynthesisUtterance(clean); u.lang="de-DE"; u.rate=.97; u.pitch=.82;
         const pick=chosenVoice(); if(pick) u.voice=pick;
@@ -1712,13 +1730,15 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function deVoices(){ try{ return speechSynthesis.getVoices().filter(v=>/^de/i.test(v.lang)); }catch(e){ return []; } }
     function chosenVoice(){ const v=deVoices(); let want=""; try{want=localStorage.getItem(LS+"-jvvoicename")||"";}catch(e){}
       return v.find(x=>x.name===want)||v.find(x=>/yannick|markus|martin|conrad|daniel|stefan|reed|eddy|male|mann/i.test(x.name))||v[0]||null; }
-    function fillVoices(){ const sel=$("jvVoiceSel"), v=deVoices(); if(!v.length){ sel.hidden=true; return; }
-      const cur=chosenVoice(); sel.innerHTML=v.map(x=>'<option'+(cur&&x.name===cur.name?' selected':'')+'>'+esc(x.name)+'</option>').join(""); sel.hidden=false; }
+    function fillVoices(){ const sel=$("jvVoiceSel"), v=deVoices(); if(!v.length&&!premium){ sel.hidden=true; return; }
+      const cur=chosenVoice(), pOn=premiumOn();
+      sel.innerHTML=(premium?'<option value="__premium"'+(pOn?' selected':'')+'>★ JARVIS-Stimme</option>':'')+v.map(x=>'<option value="'+esc(x.name)+'"'+(!pOn&&cur&&x.name===cur.name?' selected':'')+'>'+esc(x.name)+'</option>').join(""); sel.hidden=false; }
     try{ fillVoices(); speechSynthesis.onvoiceschanged=fillVoices; }catch(e){}
-    $("jvVoiceSel").onchange=()=>{ try{localStorage.setItem(LS+"-jvvoicename",$("jvVoiceSel").value);}catch(e){} J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); speak("So klinge ich jetzt, Boss. Bereit, wenn du es bist."); };
-    function unlockTTS(){ try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
+    $("jvVoiceSel").onchange=()=>{ unlockAudio(); const val=$("jvVoiceSel").value; try{localStorage.setItem(LS+"-jvvoicename",val==="__premium"?"":val);}catch(e){} J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); speak("So klinge ich jetzt, Boss. Bereit, wenn du es bist."); };
+    function unlockAudio(){ if(audUnlocked) return; try{ AUD.muted=true; AUD.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; AUD.play().then(()=>{AUD.pause(); AUD.muted=false; audUnlocked=true;}).catch(()=>{AUD.muted=false;}); }catch(e){} }
+    function unlockTTS(){ unlockAudio(); try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
     function setVoiceBtn(){const b=$("jvVoice"); b.setAttribute("aria-pressed",String(J.voice)); b.textContent=J.voice?"🔊 An":"🔈 Aus";}
-    $("jvVoice").onclick=()=>{J.voice=!J.voice; try{localStorage.setItem(LS+"-jvvoice",J.voice?"1":"0");}catch(e){} setVoiceBtn(); if(J.voice) speak("Stimme aktiv, Boss."); else try{speechSynthesis.cancel();}catch(e){}};
+    $("jvVoice").onclick=()=>{unlockAudio(); J.voice=!J.voice; try{localStorage.setItem(LS+"-jvvoice",J.voice?"1":"0");}catch(e){} setVoiceBtn(); if(J.voice) speak("Stimme aktiv, Boss."); else try{speechSynthesis.cancel();}catch(e){}};
     setVoiceBtn();
 
     const ERR={not_granted:"Du hast mir den Zugriff nicht erlaubt. Lad die Seite neu und erlaub Jarvis.",sampling_disabled:"Claude ist für dein Konto gerade nicht verfügbar.",rate_limited:"Kurz Pause, Boss – zu viele Anfragen oder dein Limit ist erreicht. Gleich nochmal.",session_expired:"Bitte bei Claude neu einloggen.",refused:"Dazu sag ich nichts. Frag anders.",upstream_error:"Verbindung gestört. Nochmal senden.",prompt_too_large:"Zu viel auf einmal. Tipp auf „Neu“ und frag nochmal.",empty_completion:"Hab nichts rausbekommen. Frag nochmal anders."};
@@ -1762,9 +1782,9 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function grow(){inp.style.height="auto"; inp.style.height=Math.min(120,inp.scrollHeight)+"px";}
     inp.addEventListener("input",grow);
     inp.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault(); ask(inp.value);}});
-    $("jvForm").addEventListener("submit",e=>{e.preventDefault(); ask(inp.value);});
+    $("jvForm").addEventListener("submit",e=>{e.preventDefault(); unlockAudio(); ask(inp.value);});
     $("jvStop").onclick=()=>{J.ctl&&J.ctl.abort();};
-    $("jvChips").addEventListener("click",e=>{const b=e.target.closest("[data-q]"); if(b) ask(b.dataset.q);});
+    $("jvChips").addEventListener("click",e=>{const b=e.target.closest("[data-q]"); if(b){ unlockAudio(); ask(b.dataset.q);} });
     $("jvClear").onclick=()=>{state.jarvis=[]; persist(); drawHistory();};
 
     // ---- voice: Gesprächsmodus ----
@@ -1911,7 +1931,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         fetch(S.url+"/api/push/test",{method:"POST",headers:{authorization:"Bearer "+S.token}}).catch(()=>{});
       }catch(e){ toast("Push ging nicht. App vom Homescreen öffnen und nochmal."); b.textContent="🔔 Push an"; }
     };
-    function useApi(){ setTimeout(pushUi,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
+    async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; fillVoices(); }catch(e){} }
+    function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
     $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
     function offline(){ if(!window.claude||!window.claude.use){
