@@ -183,6 +183,24 @@ const server = http.createServer(async (req, res) => {
       if (b.ts < (cur.ts || 0)) return send(res, 409, cur);           // anderes Gerät war neuer
       save("state", { ts: b.ts, data: b.data, by: dev.id }); return send(res, 200, { ok: true, ts: b.ts });
     }
+    if (url.pathname === "/api/tts/status" && req.method === "GET") {
+      let ok = false; try { ok = !!rd("elevenlabs.key"); } catch {} return send(res, 200, { ok });
+    }
+    if (url.pathname === "/api/tts" && req.method === "POST") {
+      if (limited("tts:" + dev.id, 40, 600e3)) return send(res, 429, { error: "Kurz Pause." });
+      let key = ""; try { key = rd("elevenlabs.key"); } catch {}
+      if (!key) return send(res, 503, { error: "Keine Stimme eingerichtet." });
+      let voice = "onwK4e9ZLuTAKqWW03F9"; try { voice = rd("voice.id") || voice; } catch {}
+      const b = await body(req), text = String(b.text || "").replace(/\[[^\]]*\]/g, "").slice(0, 600).trim();
+      if (!text) return send(res, 400, { error: "leer" });
+      const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_64", {
+        method: "POST", headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
+        body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.25, use_speaker_boost: true } })
+      });
+      if (!r.ok) { const t = await r.text(); return send(res, r.status === 401 ? 502 : r.status, { error: "Stimme: " + t.slice(0, 160) }); }
+      const buf = Buffer.from(await r.arrayBuffer());
+      res.writeHead(200, { "content-type": "audio/mpeg", "content-length": buf.length, "cache-control": "no-store" }); return res.end(buf);
+    }
     if (url.pathname === "/api/push/key" && req.method === "GET") {
       return send(res, 200, { key: VAPID && webpush ? VAPID.publicKey : null });
     }
