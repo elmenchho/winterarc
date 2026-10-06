@@ -1850,7 +1850,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function earStop(){ try{ REC.mr&&REC.mr.state!=="inactive"&&REC.mr.stop(); }catch(e){} REC.on=false; if(REC.stream){ REC.stream.getTracks().forEach(t=>t.stop()); REC.stream=null; } if(REC.ctx){ try{REC.ctx.close();}catch(e){} REC.ctx=null; } }
     function startTalk(){ // MUST run inside the tap
       unlockTTS(); J.talk=true; J.recBlocked=false; dbuf="";
-      if(canServerEar()){ J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); talkUI(); earStart().catch(()=>{ stopTalk("Mikro nicht erlaubt – in den iPhone-Einstellungen freigeben."); }); return; }
+      if(canServerEar()){ J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); talkUI(); earStart().catch(e=>{ const n=(e&&e.name)||"Fehler"; stopTalk(n==="NotAllowedError"?"Mikro blockiert ("+n+"). Browser/Safari-Einstellungen → Mikrofon → Erlauben, dann neu laden.":n==="NotFoundError"?"Kein Mikrofon gefunden ("+n+").":"Mikro-Fehler: "+n+" – "+((e&&e.message)||"").slice(0,80)); }); return; }
       if(J.dict){
         J.dict.start({language:"de-DE"}).then(()=>talkUI()).catch(e=>{
           const c=e&&e.code; J.talk=false; talkUI();
