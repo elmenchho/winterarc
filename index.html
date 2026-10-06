@@ -369,123 +369,34 @@ img{max-width:100%}
 .backup textarea{width:100%;font:inherit;font-size:13px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:90px}
 </style>
 </head>
-<body>
-<div id="lockScr" role="dialog" aria-label="App gesperrt">
-  <div class="lk-box">
-    <div class="lk-orb"></div>
-    <div class="lk-t" id="lkT">JARVIS</div>
-    <div class="lk-s" id="lkS">PIN eingeben</div>
-    <div class="lk-dots" id="lkDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="lk-pad" id="lkPad">
-      <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button class="lk-x" data-k="reset">PIN vergessen</button><button>0</button><button class="lk-x" data-k="del">⌫</button>
-    </div>
-  </div>
+<body><div id="recBox" hidden style="position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:9000;background:#0f141c;border:1px solid #3db2ff;border-radius:14px;padding:14px;color:#f3f6fa;font:15px system-ui;box-shadow:0 10px 40px rgba(0,0,0,.6)">
+  <b>Alte gesperrte Daten gefunden</b><br><span style="color:#8c99ab;font-size:13px">Gib deine alte 6-stellige PIN ein, um sie zurückzuholen.</span>
+  <div style="display:flex;gap:8px;margin-top:10px"><input id="recPin" inputmode="numeric" maxlength="6" type="password" placeholder="PIN" style="flex:1;font:inherit;font-size:16px;color:#f3f6fa;background:#06080c;border:1px solid #232d3c;border-radius:10px;padding:10px"><button id="recOk" style="border:0;border-radius:10px;padding:0 14px;font-weight:800;background:#3db2ff;color:#04121f">OK</button><button id="recNo" style="border:0;border-radius:10px;padding:0 12px;background:#232d3c;color:#8c99ab">Später</button></div>
+  <div id="recMsg" style="color:#ffb020;font-size:13px;margin-top:6px"></div>
 </div>
-<style>
-#lockScr{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 50% 30%,#0c2340 0,#06080c 60%);display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0) 16px env(safe-area-inset-bottom,0)}
-#lockScr[hidden]{display:none!important}
-.lk-box{width:100%;max-width:320px;text-align:center;color:#f3f6fa;font-family:system-ui,-apple-system,sans-serif}
-.lk-orb{width:70px;height:70px;margin:0 auto 14px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#bfe8ff 0,#3db2ff 35%,#1b4f9a 70%,#071426 100%);box-shadow:0 0 30px 4px rgba(61,178,255,.55)}
-.lk-t{font-weight:900;letter-spacing:.32em;font-size:20px;color:#bfe8ff;padding-left:.32em}
-.lk-s{color:#8c99ab;font-size:14px;margin:8px 0 18px;min-height:20px}
-.lk-dots{display:flex;gap:12px;justify-content:center;margin-bottom:26px}
-.lk-dots i{width:13px;height:13px;border-radius:50%;border:2px solid #3db2ff}
-.lk-dots i.on{background:#3db2ff;box-shadow:0 0 10px #3db2ff}
-.lk-dots.err{animation:lkshake .35s}
-@keyframes lkshake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-.lk-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.lk-pad button{width:72px;height:72px;justify-self:center;border-radius:50%;border:1px solid #232d3c;background:#0f141c;color:#f3f6fa;font-size:24px;font-weight:600}
-.lk-pad button:active{background:#1d3a5c}
-.lk-pad .lk-x{width:auto;font-size:13px;color:#8c99ab;border:0;background:none}
-</style>
 <script>
 (function(){
-  const VK="wa-vault", SKEY="winterarc90-enc", PLAIN="winterarc90", enc=new TextEncoder(), dec=new TextDecoder();
-  const b64=a=>{let s="";const u=new Uint8Array(a);for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s);}, unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-  let dkRaw=null, dk=null, saveT=null, pending=null;
-  const V=window.__vault={open:false,key:"",ck:null,sync:"",
-    async setKey(k){ const v=load(); v.key=k?await seal(V.ck,k):null; save(v); V.key=k||""; },
-    async setSrv(o){ const v=load(); v.srv=o?await seal(V.ck,JSON.stringify(o)):null; save(v); V.srv=o||null; },
-    async setSync(t){ const v=load(); v.sync=t?await seal(V.ck,t):null; save(v); V.sync=t||""; },
-    async enc(obj){ return "E1."+await seal(dk,JSON.stringify(obj)); },
-    async dec(str){ if(!str.startsWith("E1.")) return JSON.parse(str); return JSON.parse(await unseal(dk,str.slice(3))); },
-    saveState(obj){ if(!V.open) return; pending=obj; clearTimeout(saveT); saveT=setTimeout(async()=>{ const o=pending; pending=null; try{ localStorage.setItem(SKEY,await V.enc(o)); localStorage.removeItem(PLAIN);}catch(e){} },250); },
-    code(){ return dkRaw?b64(dkRaw):""; },
-    async useCode(code){ const raw=unb(code.trim()); if(raw.length!==32) throw new Error("Code ungültig");
-      let cur=null; try{ const c=localStorage.getItem(SKEY); if(c) cur=await V.dec(c); }catch(e){}
-      dkRaw=raw; dk=await crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt","decrypt"]);
-      const v=load(); v.dk=await seal(V.ck,b64(raw)); save(v);
-      if(cur) localStorage.setItem(SKEY,await V.enc(cur)); },
-    lock(){ try{ if(pending) return; }catch(e){} location.reload(); }
-  };
-  function load(){ try{return JSON.parse(localStorage.getItem(VK)||"null")||null;}catch(e){return null;} }
-  function save(v){ try{localStorage.setItem(VK,JSON.stringify(v));}catch(e){} }
-  async function derive(pin,salt){ const base=await crypto.subtle.importKey("raw",enc.encode(pin),"PBKDF2",false,["deriveKey"]);
-    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:600000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]); }
-  async function seal(ck,t){ const iv=crypto.getRandomValues(new Uint8Array(12)); const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},ck,enc.encode(t)); return b64(iv)+"."+b64(ct); }
-  async function unseal(ck,s){ const [i,c]=s.split("."); return dec.decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:unb(i)},ck,unb(c))); }
-
-  const scr=document.getElementById("lockScr"), dots=[...document.querySelectorAll("#lkDots i")], S=document.getElementById("lkS");
-  let pin="", first=null, busy=false;
-  function draw(){ dots.forEach((d,i)=>d.classList.toggle("on",i<pin.length)); }
-  function err(msg){ S.textContent=msg; const d=document.getElementById("lkDots"); d.classList.remove("err"); void d.offsetWidth; d.classList.add("err"); pin=""; draw(); if(navigator.vibrate) navigator.vibrate(120); }
-  function show(){ pin=""; draw(); scr.hidden=false; const v=load(); S.textContent=v?"PIN eingeben":(first?"PIN wiederholen":"Neue 6-stellige PIN festlegen"); }
-  function lockedUntil(){ const v=load(); return v&&v.wait?v.wait:0; }
-  async function openData(){
-    // data key
-    const v=load();
-    if(v.dk){ dkRaw=unb(await unseal(V.ck,v.dk)); }
-    else { dkRaw=crypto.getRandomValues(new Uint8Array(32)); v.dk=await seal(V.ck,b64(dkRaw)); save(v); }
-    dk=await crypto.subtle.importKey("raw",dkRaw,"AES-GCM",false,["encrypt","decrypt"]);
-    V.key=v.key?await unseal(V.ck,v.key):""; V.sync=v.sync?await unseal(V.ck,v.sync):""; V.srv=v.srv?JSON.parse(await unseal(V.ck,v.srv)):null;
-    // migrate old plaintext secrets
-    try{ const k=localStorage.getItem("wa-jarvis-key"); if(k){ if(!V.key) await V.setKey(k); localStorage.removeItem("wa-jarvis-key"); } }catch(e){}
-    try{ const t=localStorage.getItem("wa-sync"); if(t){ if(!V.sync) await V.setSync(t); localStorage.removeItem("wa-sync"); } }catch(e){}
-    // state
-    let st=null;
-    try{ const c=localStorage.getItem(SKEY); if(c) st=await V.dec(c); }catch(e){ st=null; }
-    if(!st){ try{ const p=localStorage.getItem(PLAIN); if(p){ st=JSON.parse(p); localStorage.setItem(SKEY,await V.enc(st)); localStorage.removeItem(PLAIN); } }catch(e){} }
-    return st;
-  }
-  async function done(){
-    busy=true; const v=load();
+  let v=null; try{ v=JSON.parse(localStorage.getItem("wa-vault")||"null"); }catch(e){}
+  const enc=localStorage.getItem("winterarc90-enc");
+  if(!v||!enc||!window.crypto||!crypto.subtle) return;
+  const box=document.getElementById("recBox"); box.hidden=false;
+  const unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)), te=new TextEncoder(), td=new TextDecoder();
+  async function unseal(k,s){ const [i,c]=s.split("."); return td.decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:unb(i)},k,unb(c))); }
+  document.getElementById("recNo").onclick=()=>{ box.hidden=true; };
+  document.getElementById("recOk").onclick=async()=>{
+    const pin=document.getElementById("recPin").value.trim(), m=document.getElementById("recMsg"); m.textContent="Prüfe …";
     try{
-      if(!v){
-        if(!first){ first=pin; pin=""; draw(); S.textContent="PIN wiederholen"; busy=false; return; }
-        if(pin!==first){ first=null; err("Stimmt nicht überein. Neue PIN festlegen"); busy=false; return; }
-        S.textContent="Verschlüssele …";
-        const salt=crypto.getRandomValues(new Uint8Array(16)), ck=await derive(pin,salt);
-        save({salt:b64(salt),check:await seal(ck,"ok"),key:null,sync:null,fails:0}); V.ck=ck; first=null;
-        await unlocked(); busy=false; return;
-      }
-      if(Date.now()<lockedUntil()){ err("Zu viele Versuche. Kurz warten."); busy=false; return; }
-      S.textContent="Entschlüssele …";
-      const ck=await derive(pin,unb(v.salt));
-      try{ if(await unseal(ck,v.check)!=="ok") throw 0; }catch(e){
-        v.fails=(v.fails||0)+1; if(v.fails>=5) v.wait=Date.now()+Math.min(3600e3,30e3*Math.pow(2,v.fails-5)); save(v);
-        err(v.fails>=5?"Falsch. Gesperrt für "+Math.round((v.wait-Date.now())/1000)+" s":"Falsche PIN"); busy=false; return; }
-      v.fails=0; v.wait=0; save(v); V.ck=ck; await unlocked();
-    }catch(e){ err("Fehler. Nochmal."); }
-    busy=false;
-  }
-  async function unlocked(){
-    const st=await openData();
-    V.open=true; scr.hidden=true; pin=""; draw();
-    if(st&&window.__applyState) window.__applyState(st); else if(window.__saveNow) window.__saveNow();
-    if(window.__jvAfterUnlock) window.__jvAfterUnlock();
-    if(window.__syncUnlock) window.__syncUnlock(V.sync);
-    if(window.__srvSync) window.__srvSync(true);
-  }
-  document.getElementById("lkPad").addEventListener("click",e=>{
-    const b=e.target.closest("button"); if(!b||busy) return;
-    const k=b.dataset.k;
-    if(k==="del"){ pin=pin.slice(0,-1); draw(); return; }
-    if(k==="reset"){ if(confirm("PIN vergessen?\n\nDeine Daten sind mit der PIN verschlüsselt. Ohne PIN werden sie auf DIESEM Gerät gelöscht.\nHast du Sync + deinen Tresor-Code, holst du danach alles zurück.\n\nWirklich zurücksetzen?")){ try{["wa-vault","winterarc90-enc","winterarc90"].forEach(x=>localStorage.removeItem(x));}catch(e){} location.reload(); } return; }
-    if(pin.length<6){ pin+=b.textContent; draw(); if(pin.length===6) done(); }
-  });
-  let hiddenAt=0;
-  document.addEventListener("visibilitychange",()=>{ if(document.hidden) hiddenAt=Date.now(); else if(V.open&&hiddenAt&&Date.now()-hiddenAt>120e3) V.lock(); });
-  if(!window.crypto||!crypto.subtle){ scr.hidden=true; window.__vault=null; } else show();
+      const base=await crypto.subtle.importKey("raw",te.encode(pin),"PBKDF2",false,["deriveKey"]);
+      const ck=await crypto.subtle.deriveKey({name:"PBKDF2",salt:unb(v.salt),iterations:600000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
+      if(await unseal(ck,v.check)!=="ok") throw 0;
+      const dkRaw=unb(await unseal(ck,v.dk)), dk=await crypto.subtle.importKey("raw",dkRaw,"AES-GCM",false,["decrypt"]);
+      const data=JSON.parse(await unseal(dk,enc.slice(3)));
+      localStorage.setItem("winterarc90",JSON.stringify(data));
+      if(v.key) try{ localStorage.setItem("wa-jarvis-key",await unseal(ck,v.key)); }catch(e){}
+      localStorage.removeItem("winterarc90-enc"); localStorage.removeItem("wa-vault");
+      m.textContent="✓ Zurückgeholt. Lädt neu …"; setTimeout(()=>location.reload(),600);
+    }catch(e){ m.textContent="PIN falsch."; }
+  };
 })();
 </script>
 
