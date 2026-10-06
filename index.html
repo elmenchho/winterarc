@@ -1745,7 +1745,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       catch(e){ text=e&&e.text||""; el.classList.remove("think");
         if(e&&e.code==="cancelled"){ el.textContent=text||"Abgebrochen."; }
         else if(e&&(e.code==="tools_unavailable")){ J.tools=false; el.textContent="Moment, ohne Eintragen-Funktion…"; state.jarvis.pop(); setBusy(false); el.remove(); log.lastChild&&log.lastChild.remove(); return ask(q); }
-        else if(e&&e.code==="bad_key"){ el.textContent="Der Schlüssel funktioniert nicht, Boss. Trag ihn neu ein."; setApiKey(""); if(srv()) window.__vault.setSrv(null); J.sample=null; keySetup(); }
+        else if(e&&e.code==="bad_key"){ el.textContent="Der Schlüssel funktioniert nicht, Boss. Trag ihn neu ein."; setApiKey(""); if(srv()) setSrv(null); J.sample=null; keySetup(); }
         else if(e&&e.code==="no_credit"){ el.textContent="Mein Guthaben ist leer, Boss. Lad auf console.anthropic.com unter Billing auf."; }
         else { el.textContent=(text?text+"\n\n":"")+(ERR[e&&e.code]||ERR.upstream_error); if(e&&["not_granted","sampling_disabled","not_declared","capability_disabled"].includes(e.code)) J.sample=null; }
       }
@@ -1824,7 +1824,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     const KEYLS="wa-jarvis-key", MODEL="claude-haiku-4-5-20251001";
     function apiKey(){ if(window.__vault) return window.__vault.open?(window.__vault.key||""):""; try{return localStorage.getItem(KEYLS)||"";}catch(e){return "";} }
     async function setApiKey(k){ if(window.__vault&&window.__vault.open){ await window.__vault.setKey(k); return; } try{ if(k) localStorage.setItem(KEYLS,k); else localStorage.removeItem(KEYLS);}catch(e){} }
-    function srv(){ return (window.__vault&&window.__vault.open&&window.__vault.srv)||null; }
+    function srv(){ if(window.__vault) return (window.__vault.open&&window.__vault.srv)||null; try{return JSON.parse(localStorage.getItem("wa-srv")||"null");}catch(e){return null;} }
+    async function setSrv(o){ if(window.__vault&&window.__vault.open) return window.__vault.setSrv(o); try{ if(o) localStorage.setItem("wa-srv",JSON.stringify(o)); else localStorage.removeItem("wa-srv"); }catch(e){} }
     function apiSample(){
       const f=async(input,opts={})=>{
         const S=srv(), key=S?"":apiKey(); if(!S&&!key) throw {code:"not_granted",message:"no key"};
@@ -1876,14 +1877,14 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       $("jvSrvOk").onclick=async()=>{
         const url=$("jvSrvUrl").value.trim().replace(/\/+$/,""), code=$("jvSrvCode").value.trim().toUpperCase();
         if(!/^https:\/\//.test(url)){ toast("Adresse muss mit https:// beginnen"); return; } if(code.length<8){ $("jvSrvCode").focus(); return; }
-        if(!window.__vault||!window.__vault.open){ toast("Erst entsperren"); return; }
+        if(window.__vault&&!window.__vault.open){ toast("Erst entsperren"); return; }
         $("jvSrvOk").disabled=true; $("jvSrvOk").textContent="Verbinde …";
         try{
           const nm=(/iPhone|Android/i.test(navigator.userAgent)?"Handy":/Mac/i.test(navigator.userAgent)?"MacBook":/Win/i.test(navigator.userAgent)?"Windows-PC":"Gerät");
           const r=await fetch(url+"/api/pair",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({code,name:nm})});
           const j=await r.json().catch(()=>({}));
           if(!r.ok||!j.token){ toast(j.error||"Kopplung fehlgeschlagen"); $("jvSrvOk").disabled=false; $("jvSrvOk").textContent="Mit Server verbinden"; return; }
-          await window.__vault.setSrv({url,token:j.token,id:j.id});
+          await setSrv({url,token:j.token,id:j.id});
           o.hidden=true; o.innerHTML=""; useApi(); toast("Mit JARVIS-Server verbunden, Boss.");
           if(window.__srvSync) window.__srvSync(true);
         }catch(e){ toast("Server nicht erreichbar"); $("jvSrvOk").disabled=false; $("jvSrvOk").textContent="Mit Server verbinden"; }
@@ -1892,7 +1893,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         setApiKey(k).then(()=>{ o.hidden=true; o.innerHTML=""; useApi(); toast("Jarvis ist online, Boss."); }); };
     }
     function useApi(){ J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
-    $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); if(window.__vault&&window.__vault.open) window.__vault.setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
+    $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
     function offline(){ if(!window.claude||!window.claude.use){
         window.__jvAfterUnlock=()=>{ $("jvOff").hidden=true; offline(); };
@@ -2062,7 +2063,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
 
   // ---------- Sync über den eigenen JARVIS-Server ----------
   let srvTimer=null, srvBusy=false, srvAgain=false;
-  function S(){ return (window.__vault&&window.__vault.open&&window.__vault.srv)||null; }
+  function S(){ if(window.__vault) return (window.__vault.open&&window.__vault.srv)||null; try{return JSON.parse(localStorage.getItem("wa-srv")||"null");}catch(e){return null;} }
   async function srvReq(method,body){ const s=S(); const r=await fetch(s.url+"/api/state",{method,headers:{"content-type":"application/json","authorization":"Bearer "+s.token},body:body?JSON.stringify(body):undefined,cache:"no-store"}); const j=await r.json().catch(()=>({})); return {status:r.status,j}; }
   function applyRemote(r){ if(r&&r.data&&r.data.days&&(r.ts||0)>(state._ts||0)){ state=norm(r.data); state._ts=r.ts; persistLocal(); render(); renderEditors(); if(window.__jarvisRedraw) window.__jarvisRedraw(); sMsg("🛰 Synchronisiert (vom Server geladen)"); return true; } return false; }
   async function srvPull(){ if(!S()) return; try{ const {status,j}=await srvReq("GET"); if(status===401){ sMsg("🛰 Server: Gerät nicht mehr gekoppelt."); return; } if(status!==200) return;
@@ -2076,6 +2077,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
   window.__srvSync=pull=>{ if(pull) srvPull(); else srvPush(); };
   const _persist2=persist; persist=function(){ _persist2(); srvPush(); };
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) srvPull(); });
+  setTimeout(()=>{ if(S()) srvPull(); },800);
   // ---------- Import per Link (#import=...) ----------
   function checkImport(){
     const h=location.hash||""; if(!h.startsWith("#import=")) return;
