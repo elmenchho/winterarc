@@ -400,16 +400,27 @@ img{max-width:100%}
 </style>
 <script>
 (function(){
-  const VK="wa-vault", enc=new TextEncoder(), dec=new TextDecoder();
-  const b64=a=>btoa(String.fromCharCode(...new Uint8Array(a))), unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-  const V=window.__vault={open:false,key:"",ck:null,
+  const VK="wa-vault", SKEY="winterarc90-enc", PLAIN="winterarc90", enc=new TextEncoder(), dec=new TextDecoder();
+  const b64=a=>{let s="";const u=new Uint8Array(a);for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s);}, unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+  let dkRaw=null, dk=null, saveT=null, pending=null;
+  const V=window.__vault={open:false,key:"",ck:null,sync:"",
     async setKey(k){ const v=load(); v.key=k?await seal(V.ck,k):null; save(v); V.key=k||""; },
-    lock(){ V.open=false; V.key=""; V.ck=null; show(); }
+    async setSync(t){ const v=load(); v.sync=t?await seal(V.ck,t):null; save(v); V.sync=t||""; },
+    async enc(obj){ return "E1."+await seal(dk,JSON.stringify(obj)); },
+    async dec(str){ if(!str.startsWith("E1.")) return JSON.parse(str); return JSON.parse(await unseal(dk,str.slice(3))); },
+    saveState(obj){ if(!V.open) return; pending=obj; clearTimeout(saveT); saveT=setTimeout(async()=>{ const o=pending; pending=null; try{ localStorage.setItem(SKEY,await V.enc(o)); localStorage.removeItem(PLAIN);}catch(e){} },250); },
+    code(){ return dkRaw?b64(dkRaw):""; },
+    async useCode(code){ const raw=unb(code.trim()); if(raw.length!==32) throw new Error("Code ungültig");
+      let cur=null; try{ const c=localStorage.getItem(SKEY); if(c) cur=await V.dec(c); }catch(e){}
+      dkRaw=raw; dk=await crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt","decrypt"]);
+      const v=load(); v.dk=await seal(V.ck,b64(raw)); save(v);
+      if(cur) localStorage.setItem(SKEY,await V.enc(cur)); },
+    lock(){ try{ if(pending) return; }catch(e){} location.reload(); }
   };
   function load(){ try{return JSON.parse(localStorage.getItem(VK)||"null")||null;}catch(e){return null;} }
   function save(v){ try{localStorage.setItem(VK,JSON.stringify(v));}catch(e){} }
   async function derive(pin,salt){ const base=await crypto.subtle.importKey("raw",enc.encode(pin),"PBKDF2",false,["deriveKey"]);
-    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]); }
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:600000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]); }
   async function seal(ck,t){ const iv=crypto.getRandomValues(new Uint8Array(12)); const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},ck,enc.encode(t)); return b64(iv)+"."+b64(ct); }
   async function unseal(ck,s){ const [i,c]=s.split("."); return dec.decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:unb(i)},ck,unb(c))); }
 
@@ -419,39 +430,60 @@ img{max-width:100%}
   function err(msg){ S.textContent=msg; const d=document.getElementById("lkDots"); d.classList.remove("err"); void d.offsetWidth; d.classList.add("err"); pin=""; draw(); if(navigator.vibrate) navigator.vibrate(120); }
   function show(){ pin=""; draw(); scr.hidden=false; const v=load(); S.textContent=v?"PIN eingeben":(first?"PIN wiederholen":"Neue 6-stellige PIN festlegen"); }
   function lockedUntil(){ const v=load(); return v&&v.wait?v.wait:0; }
+  async function openData(){
+    // data key
+    const v=load();
+    if(v.dk){ dkRaw=unb(await unseal(V.ck,v.dk)); }
+    else { dkRaw=crypto.getRandomValues(new Uint8Array(32)); v.dk=await seal(V.ck,b64(dkRaw)); save(v); }
+    dk=await crypto.subtle.importKey("raw",dkRaw,"AES-GCM",false,["encrypt","decrypt"]);
+    V.key=v.key?await unseal(V.ck,v.key):""; V.sync=v.sync?await unseal(V.ck,v.sync):"";
+    // migrate old plaintext secrets
+    try{ const k=localStorage.getItem("wa-jarvis-key"); if(k){ if(!V.key) await V.setKey(k); localStorage.removeItem("wa-jarvis-key"); } }catch(e){}
+    try{ const t=localStorage.getItem("wa-sync"); if(t){ if(!V.sync) await V.setSync(t); localStorage.removeItem("wa-sync"); } }catch(e){}
+    // state
+    let st=null;
+    try{ const c=localStorage.getItem(SKEY); if(c) st=await V.dec(c); }catch(e){ st=null; }
+    if(!st){ try{ const p=localStorage.getItem(PLAIN); if(p){ st=JSON.parse(p); localStorage.setItem(SKEY,await V.enc(st)); localStorage.removeItem(PLAIN); } }catch(e){} }
+    return st;
+  }
   async function done(){
     busy=true; const v=load();
     try{
       if(!v){
         if(!first){ first=pin; pin=""; draw(); S.textContent="PIN wiederholen"; busy=false; return; }
         if(pin!==first){ first=null; err("Stimmt nicht überein. Neue PIN festlegen"); busy=false; return; }
+        S.textContent="Verschlüssele …";
         const salt=crypto.getRandomValues(new Uint8Array(16)), ck=await derive(pin,salt);
-        const nv={salt:b64(salt),check:await seal(ck,"ok"),key:null,fails:0};
-        let old=""; try{old=localStorage.getItem("wa-jarvis-key")||"";}catch(e){}
-        if(old){ nv.key=await seal(ck,old); try{localStorage.removeItem("wa-jarvis-key");}catch(e){} }
-        save(nv); V.ck=ck; V.key=old; first=null; unlocked(); busy=false; return;
+        save({salt:b64(salt),check:await seal(ck,"ok"),key:null,sync:null,fails:0}); V.ck=ck; first=null;
+        await unlocked(); busy=false; return;
       }
       if(Date.now()<lockedUntil()){ err("Zu viele Versuche. Kurz warten."); busy=false; return; }
+      S.textContent="Entschlüssele …";
       const ck=await derive(pin,unb(v.salt));
       try{ if(await unseal(ck,v.check)!=="ok") throw 0; }catch(e){
         v.fails=(v.fails||0)+1; if(v.fails>=5) v.wait=Date.now()+Math.min(3600e3,30e3*Math.pow(2,v.fails-5)); save(v);
         err(v.fails>=5?"Falsch. Gesperrt für "+Math.round((v.wait-Date.now())/1000)+" s":"Falsche PIN"); busy=false; return; }
-      v.fails=0; v.wait=0; save(v); V.ck=ck; V.key=v.key?await unseal(ck,v.key):""; unlocked();
+      v.fails=0; v.wait=0; save(v); V.ck=ck; await unlocked();
     }catch(e){ err("Fehler. Nochmal."); }
     busy=false;
   }
-  function unlocked(){ V.open=true; scr.hidden=true; pin=""; draw(); if(window.__jvAfterUnlock) window.__jvAfterUnlock(); }
+  async function unlocked(){
+    const st=await openData();
+    V.open=true; scr.hidden=true; pin=""; draw();
+    if(st&&window.__applyState) window.__applyState(st); else if(window.__saveNow) window.__saveNow();
+    if(window.__jvAfterUnlock) window.__jvAfterUnlock();
+    if(window.__syncUnlock) window.__syncUnlock(V.sync);
+  }
   document.getElementById("lkPad").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b||busy) return;
     const k=b.dataset.k;
     if(k==="del"){ pin=pin.slice(0,-1); draw(); return; }
-    if(k==="reset"){ if(confirm("PIN vergessen? Dann wird nur der gespeicherte Jarvis-Schlüssel gelöscht – deine Daten bleiben. Du legst eine neue PIN fest und trägst den Schlüssel neu ein.")){ try{localStorage.removeItem(VK);}catch(e){} first=null; show(); } return; }
+    if(k==="reset"){ if(confirm("PIN vergessen?\n\nDeine Daten sind mit der PIN verschlüsselt. Ohne PIN werden sie auf DIESEM Gerät gelöscht.\nHast du Sync + deinen Tresor-Code, holst du danach alles zurück.\n\nWirklich zurücksetzen?")){ try{["wa-vault","winterarc90-enc","winterarc90"].forEach(x=>localStorage.removeItem(x));}catch(e){} location.reload(); } return; }
     if(pin.length<6){ pin+=b.textContent; draw(); if(pin.length===6) done(); }
   });
-  // auto-lock after 2 minutes in background
   let hiddenAt=0;
   document.addEventListener("visibilitychange",()=>{ if(document.hidden) hiddenAt=Date.now(); else if(V.open&&hiddenAt&&Date.now()-hiddenAt>120e3) V.lock(); });
-  if(!window.crypto||!crypto.subtle){ scr.hidden=true; V.open=true; V.key=""; window.__vault=null; } else show();
+  if(!window.crypto||!crypto.subtle){ scr.hidden=true; window.__vault=null; } else show();
 })();
 </script>
 
@@ -793,6 +825,11 @@ img{max-width:100%}
       <input id="syncTok" type="password" autocomplete="off" placeholder="GitHub-Schlüssel (github_pat_…)" style="width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">
       <div class="btns"><button class="btn" id="syncOn" type="button">Verbinden</button><button class="btn ghost" id="syncNow" type="button">Jetzt syncen</button><button class="btn ghost" id="syncOff" type="button">Trennen</button></div>
       <div class="sub" id="syncMsg"></div>
+      <div class="sub" style="margin-top:10px"><b>🔒 Tresor-Code</b> – deine Daten werden verschlüsselt, bevor sie dein Gerät verlassen. GitHub sieht nur Datensalat. Auf jedem weiteren Gerät einmal den Code vom ersten Gerät eingeben. Code geheim halten und sicher notieren (z. B. Passwort-App) – ohne ihn sind die Sync-Daten nicht lesbar.</div>
+      <div class="btns"><button class="btn ghost" id="vcShow" type="button">Code anzeigen</button></div>
+      <code id="vcOut" hidden style="display:block;word-break:break-all;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;user-select:all"></code>
+      <input id="vcIn" type="password" autocomplete="off" placeholder="Tresor-Code vom ersten Gerät" style="width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">
+      <div class="btns"><button class="btn ghost" id="vcUse" type="button">Code übernehmen</button></div>
     </div>
   </details>
 
@@ -941,12 +978,15 @@ img{max-width:100%}
     s.plan=Object.assign({sel:{},hidden:{},bought:{},extra:[]},s.plan||{});
     return s;
   }
-  try{const c=localStorage.getItem(LS); if(c){const p=JSON.parse(c); if(p&&p.days) state=p;}}catch(e){}
+  if(!window.__vault){ try{const c=localStorage.getItem(LS); if(c){const p=JSON.parse(c); if(p&&p.days) state=p;}}catch(e){} }
   norm(state);
+  function persistLocal(){ if(window.__vault){ window.__vault.saveState(state); return; } try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){} }
+  window.__applyState=o=>{ if(!o||!o.days) return; state=norm(o); try{ render(); renderEditors(); if(window.__jarvisRedraw) window.__jarvisRedraw(); }catch(e){} };
+  window.__saveNow=()=>persistLocal();
   let ref=null, saving=false, dirty=false, timer=null;
   const syncEl=document.getElementById("sync");
   function persist(){
-    try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
+    persistLocal();
     if(!ref) return;
     clearTimeout(timer); timer=setTimeout(flush,500);
   }
@@ -1940,7 +1980,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         $("jvHint").textContent=J.tools?"Tippe oder sprich. Ich kann eintragen, abhaken und planen.":"Tippe oder sprich. (Eintragen geht in dieser Ansicht nicht.)";
       }catch(e){ offline(); }
     })();
-    window.__jarvisRefresh=()=>{ if(!J.busy&&!log.children.length) drawHistory(); };
+    window.__jarvisRedraw=()=>{ if(!J.busy) drawHistory(); }; window.__jarvisRefresh=()=>{ if(!J.busy&&!log.children.length) drawHistory(); };
   })();
 
   // ---------- Tabs ----------
@@ -2033,7 +2073,14 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
   // ---------- Sync (GitHub, privates Repo) ----------
   const SYNC_REPO="elmenchho/winterarc-data", SYNC_FILE="state.json", SK="wa-sync";
   let syncTok=null, syncSha=null, syncBusy=false, syncAgain=false, syncTimer=null;
-  try{ syncTok=localStorage.getItem(SK)||null; }catch(e){}
+  if(!window.__vault){ try{ syncTok=localStorage.getItem(SK)||null; }catch(e){} }
+  window.__syncUnlock=t=>{ syncTok=t||null; syncUi(); if(syncTok) syncPull();
+  // Tresor-Code (Ende-zu-Ende-Schlüssel) zwischen Geräten
+  $("vcShow").onclick=()=>{ if(!window.__vault||!window.__vault.open) return; const o=$("vcOut"); if(!o.hidden){ o.hidden=true; o.textContent=""; return; } o.textContent=window.__vault.code(); o.hidden=false; };
+  $("vcUse").onclick=async()=>{ const c=$("vcIn").value.trim(); if(!c||!window.__vault) return; try{ await window.__vault.useCode(c); $("vcIn").value=""; syncBlocked=false; sMsg("Tresor-Code übernommen. Synchronisiere …"); await syncPull(); }catch(e){ sMsg("Tresor-Code ungültig."); } }; };
+  async function packState(){ return window.__vault?await window.__vault.enc(state):JSON.stringify(state); }
+  async function unpack(txt){ if(txt.trim().startsWith("{")) return JSON.parse(txt); if(!window.__vault) throw new Error("locked"); return await window.__vault.dec(txt.trim()); }
+  let syncBlocked=false;
   const b64e=t=>btoa(unescape(encodeURIComponent(t))), b64d=t=>decodeURIComponent(escape(atob(t.replace(/\n/g,""))));
   function sMsg(t){ $("syncMsg").textContent=t; $("sync").textContent=t; }
   async function gh(method,body){
@@ -2047,8 +2094,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       if(status===404){ syncSha=null; await syncPush(true); return; }
       if(status===401||status===403){ sMsg("Sync: Schlüssel ungültig oder ohne Zugriff auf winterarc-data."); return; }
       if(status!==200){ sMsg("Sync gerade nicht erreichbar."); return; }
-      syncSha=j.sha; const remote=JSON.parse(b64d(j.content));
-      if((remote._ts||0)>(state._ts||0)){ state=norm(remote); try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){} render(); renderEditors(); sMsg("Synchronisiert ✓ (vom anderen Gerät geladen)"); }
+      syncSha=j.sha; let remote; try{ remote=await unpack(b64d(j.content)); syncBlocked=false; }catch(e){ syncBlocked=true; sMsg("🔒 Daten auf GitHub sind mit einem anderen Tresor-Code verschlüsselt. Gib unten den Tresor-Code von deinem ersten Gerät ein."); return; }
+      if((remote._ts||0)>(state._ts||0)){ state=norm(remote); persistLocal(); render(); renderEditors(); sMsg("Synchronisiert ✓ (vom anderen Gerät geladen)"); }
       else if((state._ts||0)>(remote._ts||0)){ await syncPush(true); }
       else sMsg("Synchronisiert ✓");
     }catch(e){ sMsg("Offline – wird gesynct, sobald Internet da ist."); }
@@ -2057,11 +2104,12 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     if(!syncTok) return;
     if(!now){ clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncPush(true),1500); return; }
     if(syncBusy){ syncAgain=true; return; }
+    if(syncBlocked) return;
     syncBusy=true;
     try{
-      const body={message:"sync",content:b64e(JSON.stringify(state))}; if(syncSha) body.sha=syncSha;
+      const body={message:"sync",content:b64e(await packState())}; if(syncSha) body.sha=syncSha;
       let {status,j}=await gh("PUT",body);
-      if(status===409||status===422){ const g=await gh("GET"); if(g.status===200){ const remote=JSON.parse(b64d(g.j.content)); syncSha=g.j.sha; if((remote._ts||0)>(state._ts||0)){ state=norm(remote); try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){} render(); renderEditors(); sMsg("Synchronisiert ✓"); syncBusy=false; return; } body.sha=syncSha; ({status,j}=await gh("PUT",body)); } }
+      if(status===409||status===422){ const g=await gh("GET"); if(g.status===200){ let remote; try{ remote=await unpack(b64d(g.j.content)); }catch(e){ syncBlocked=true; syncBusy=false; sMsg("🔒 Tresor-Code passt nicht."); return; } syncSha=g.j.sha; if((remote._ts||0)>(state._ts||0)){ state=norm(remote); persistLocal(); render(); renderEditors(); sMsg("Synchronisiert ✓"); syncBusy=false; return; } body.sha=syncSha; ({status,j}=await gh("PUT",body)); } }
       if(status===200||status===201){ syncSha=j.content&&j.content.sha; sMsg("Synchronisiert ✓"); }
       else if(status===401||status===403) sMsg("Sync: Schlüssel ungültig oder ohne Zugriff auf winterarc-data.");
       else sMsg("Sync-Fehler ("+status+"), versuche es später nochmal.");
@@ -2070,9 +2118,9 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
   }
   const _persist=persist; persist=function(){ state._ts=Date.now(); _persist(); syncPush(); };
   function syncUi(){ $("syncInfo").textContent=syncTok?"Verbunden. Änderungen landen automatisch auf allen Geräten.":"Verbinde jedes Gerät einmal mit deinem Schlüssel. Danach ist alles auf Handy und PC gleich."; $("syncTok").hidden=!!syncTok; $("syncOn").hidden=!!syncTok; $("syncNow").hidden=!syncTok; $("syncOff").hidden=!syncTok; }
-  $("syncOn").onclick=async()=>{ const t=$("syncTok").value.trim(); if(!t) return; syncTok=t; try{localStorage.setItem(SK,t);}catch(e){} $("syncTok").value=""; syncUi(); sMsg("Verbinde …"); await syncPull(); };
+  $("syncOn").onclick=async()=>{ const t=$("syncTok").value.trim(); if(!t) return; syncTok=t; if(window.__vault) await window.__vault.setSync(t); else try{localStorage.setItem(SK,t);}catch(e){} $("syncTok").value=""; syncUi(); sMsg("Verbinde …"); await syncPull(); };
   $("syncNow").onclick=()=>syncPull();
-  $("syncOff").onclick=()=>{ syncTok=null; try{localStorage.removeItem(SK);}catch(e){} syncUi(); sMsg("Sync getrennt. Daten bleiben auf diesem Gerät."); };
+  $("syncOff").onclick=()=>{ syncTok=null; if(window.__vault) window.__vault.setSync(""); try{localStorage.removeItem(SK);}catch(e){} syncUi(); sMsg("Sync getrennt. Daten bleiben auf diesem Gerät."); };
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) syncPull(); });
   syncUi(); if(syncTok) syncPull();
 
