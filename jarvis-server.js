@@ -186,6 +186,21 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/tts/status" && req.method === "GET") {
       let ok = false; try { ok = !!rd("elevenlabs.key"); } catch {} return send(res, 200, { ok });
     }
+    if (url.pathname === "/api/stt" && req.method === "POST") {
+      if (limited("stt:" + dev.id, 60, 600e3)) return send(res, 429, { error: "Kurz Pause." });
+      let key = ""; try { key = rd("elevenlabs.key"); } catch {}
+      if (!key) return send(res, 503, { error: "Keine Stimme eingerichtet." });
+      const audio = await new Promise((ok, bad) => { let n = 0; const c = []; req.on("data", d => { n += d.length; if (n > 8 * 1024 * 1024) { bad(new Error("zu groß")); req.destroy(); } else c.push(d); }); req.on("end", () => ok(Buffer.concat(c))); req.on("error", bad); });
+      if (audio.length < 1000) return send(res, 200, { text: "" });
+      const ct = String(req.headers["content-type"] || "audio/webm").split(";")[0];
+      const fd = new FormData();
+      fd.append("model_id", "scribe_v1"); fd.append("language_code", "deu"); fd.append("tag_audio_events", "false");
+      fd.append("file", new Blob([audio], { type: ct }), "rec." + (ct.includes("mp4") ? "mp4" : ct.includes("ogg") ? "ogg" : "webm"));
+      const r = await fetch("https://api.elevenlabs.io/v1/speech-to-text", { method: "POST", headers: { "xi-api-key": key }, body: fd });
+      const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {}
+      if (!r.ok) return send(res, 502, { error: "Hören: " + t.slice(0, 160) });
+      return send(res, 200, { text: String(j.text || "").trim() });
+    }
     if (url.pathname === "/api/tts" && req.method === "POST") {
       if (limited("tts:" + dev.id, 40, 600e3)) return send(res, 429, { error: "Kurz Pause." });
       let key = ""; try { key = rd("elevenlabs.key"); } catch {}
