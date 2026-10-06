@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # JARVIS Home-Base Installer (Ubuntu). Ausführen als root.
 set -euo pipefail
+if [ "${1:-}" = "voice" ]; then
+  echo ">> ElevenLabs-Schlüssel einfügen. Man sieht beim Tippen NICHTS – das ist Absicht."
+  read -rsp "   Schlüssel: " K </dev/tty; echo
+  [ -n "$K" ] || { echo "   Leer – Abbruch."; exit 1; }
+  printf '%s' "$K" > /etc/jarvis/elevenlabs.key; unset K
+  chown root:jarvis /etc/jarvis/elevenlabs.key; chmod 640 /etc/jarvis/elevenlabs.key
+  if [ -n "${2:-}" ]; then printf '%s' "$2" > /etc/jarvis/voice.id; chown root:jarvis /etc/jarvis/voice.id; chmod 640 /etc/jarvis/voice.id; fi
+  echo "   ✅ Stimme eingerichtet. JARVIS-STIMME FERTIG"; exit 0
+fi
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a
 SRC="https://elmenchho.github.io/winterarc"
 IP=$(curl -fsS4 https://api.ipify.org || hostname -I | awk '{print $1}')
