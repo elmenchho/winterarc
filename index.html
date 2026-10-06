@@ -1713,8 +1713,21 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         AUD.src=url; await AUD.play(); return true;
       }catch(e){ J.speaking=false; orb.classList.remove("speak"); return false; }
     }
+    const MONS=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+    function sayable(t){
+      return String(t)
+        .replace(/\[[^\]]*\]/g,"").replace(/[*_#`>]+/g,"").replace(/https?:\/\/\S+/g,"")
+        .replace(/\b(\d{1,2}):(\d{2})\s*(Uhr)?/g,(m,h,mi)=>{ h=+h; mi=+mi; return h+" Uhr"+(mi?" "+mi:""); })
+        .replace(/\b(\d{1,2})\.(\d{1,2})\.(\d{2,4})?/g,(m,d,mo,y)=>{ const M=MONS[+mo-1]; return M?(+d)+". "+M+(y?" "+y:""):m; })
+        .replace(/(\d[\d.,]*)\s*\/\s*(\d[\d.,]*)/g,"$1 von $2")
+        .replace(/(\d[\d.,]*)\s*kcal/gi,"$1 Kilokalorien").replace(/(\d[\d.,]*)\s*g\b/g,"$1 Gramm").replace(/(\d[\d.,]*)\s*kg\b/g,"$1 Kilo")
+        .replace(/€\s*(\d[\d.,]*)/g,"$1 Euro").replace(/(\d[\d.,]*)\s*€/g,"$1 Euro").replace(/€/g," Euro")
+        .replace(/(\d)\s*%/g,"$1 Prozent").replace(/\b(\d{1,3})\.(\d{3})\b/g,"$1$2")
+        .replace(/\s[·|]\s/g,", ").replace(/\s+/g," ").trim();
+    }
     function speak(text){
       if(!(J.voice||J.talk)||!text){ if(J.talk) speakDone(); return; }
+      text=sayable(text);
       if(premiumOn()){ speakPremium(text.replace(/\[[^\]]*\]/g,"")).then(ok=>{ if(!ok) speakDevice(text); }); return; }
       speakDevice(text);
     }
@@ -1755,7 +1768,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       const before=JSON.stringify(state); acts=[];
       const turns=state.jarvis.slice(-12);
       while(turns.length&&turns[0].role!=="user") turns.shift();
-      const talkNote=J.talk?"\n\n(Er SPRICHT gerade mit dir, deine Antwort wird vorgelesen: antworte in 1–3 kurzen, natürlich gesprochenen Sätzen, ohne Listen, Sonderzeichen oder Emojis.)":"";
+      const talkNote=J.talk?"\n\n(Er SPRICHT gerade mit dir, deine Antwort wird vorgelesen: antworte in 1–3 kurzen, natürlich gesprochenen Sätzen wie ein Mensch am Telefon. Keine Listen, kein Markdown, keine Sonderzeichen, keine Emojis. Uhrzeiten so: "halb zwei", "kurz nach eins", "um drei". Zahlen gerundet und ausgeschrieben, wo es natürlich klingt.)":"";
       const input=[{role:"user",content:RULES+"\n\n===== LAGEBILD =====\n"+snapshot()+"\n===== ENDE LAGEBILD =====\n\nAntworte ab jetzt als Jarvis auf Luis' Nachrichten."+talkNote},...turns];
       J.ctl=new AbortController();
       const opts={signal:J.ctl.signal,cache:false,modelTier:"quick",onText:({text})=>{el.classList.remove("think"); el.textContent=text; el.scrollIntoView({block:"end"});}};
