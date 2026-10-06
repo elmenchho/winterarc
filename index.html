@@ -642,7 +642,7 @@ img{max-width:100%}
     </div>
     <div class="jv-row">
       <span id="jvHint">Tippe oder sprich. Ich kann eintragen, abhaken und planen.</span>
-      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
+      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvPush" type="button" hidden>🔔 Push an</button><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
     </div>
     <div class="jv-log" id="jvLog" aria-live="polite"></div>
     <div class="jv-off" id="jvOff" hidden></div>
@@ -1892,7 +1892,26 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       $("jvKeyOk").onclick=()=>{ const k=$("jvKey").value.trim(); if(!/^sk-ant-/.test(k)){ $("jvKey").focus(); toast("Schlüssel beginnt mit sk-ant-"); return; }
         setApiKey(k).then(()=>{ o.hidden=true; o.innerHTML=""; useApi(); toast("Jarvis ist online, Boss."); }); };
     }
-    function useApi(){ J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
+    function pushUi(){ const b=$("jvPush"); const can=srv()&&("serviceWorker" in navigator)&&("PushManager" in window)&&("Notification" in window);
+      b.hidden=!can; if(can&&Notification.permission==="granted") b.textContent="🔔 Push ✓"; }
+    $("jvPush").onclick=async()=>{
+      const S=srv(); if(!S) return; const b=$("jvPush");
+      try{
+        const perm=await Notification.requestPermission();
+        if(perm!=="granted"){ toast("Push nicht erlaubt. In den iPhone-Einstellungen bei der App erlauben."); return; }
+        b.textContent="🔔 …";
+        const reg=await navigator.serviceWorker.ready;
+        const kr=await fetch(S.url+"/api/push/key",{headers:{authorization:"Bearer "+S.token}}); const kj=await kr.json();
+        if(!kj.key){ toast("Server hat noch kein Push – Update auf dem Server nötig."); b.textContent="🔔 Push an"; return; }
+        const raw=atob((kj.key+"===".slice((kj.key.length+3)%4)).replace(/-/g,"+").replace(/_/g,"/")), key=Uint8Array.from(raw,c=>c.charCodeAt(0));
+        let sub=await reg.pushManager.getSubscription(); if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
+        const r=await fetch(S.url+"/api/push/sub",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({sub})});
+        if(!r.ok) throw 0;
+        b.textContent="🔔 Push ✓"; toast("Push aktiv. Testnachricht kommt gleich, Boss.");
+        fetch(S.url+"/api/push/test",{method:"POST",headers:{authorization:"Bearer "+S.token}}).catch(()=>{});
+      }catch(e){ toast("Push ging nicht. App vom Homescreen öffnen und nochmal."); b.textContent="🔔 Push an"; }
+    };
+    function useApi(){ setTimeout(pushUi,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
     $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
     function offline(){ if(!window.claude||!window.claude.use){
