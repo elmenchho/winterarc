@@ -51,6 +51,68 @@ if (process.argv[2] === "revoke") { const d = load("devices", []).filter(x => x.
 
 const APIKEY = rd("anthropic.key");
 
+// ---------- Web-Push ----------
+let webpush = null;
+try { webpush = require("/opt/jarvis/node_modules/web-push"); } catch { try { webpush = require("web-push"); } catch {} }
+let VAPID = load("vapid", null);
+if (webpush && !VAPID) { VAPID = webpush.generateVAPIDKeys(); save("vapid", VAPID); }
+if (webpush && VAPID) webpush.setVapidDetails("mailto:jarvis@localhost", VAPID.publicKey, VAPID.privateKey);
+async function pushAll(msg) {
+  if (!webpush) return 0;
+  const subs = load("subs", []); let ok = 0, keep = [];
+  for (const s of subs) {
+    try { await webpush.sendNotification(s.sub, JSON.stringify(msg), { TTL: 3600, urgency: "high" }); ok++; keep.push(s); }
+    catch (e) { if (e.statusCode !== 404 && e.statusCode !== 410) keep.push(s); }
+  }
+  if (keep.length !== subs.length) save("subs", keep);
+  return ok;
+}
+
+// ---------- Jarvis meldet sich selbst ----------
+const SCHEDULE = [
+  ["11:57", "Vormittag-Check: Was ist erledigt, was fehlt bis Mittag?"],
+  ["12:57", "Nachmittag startet: Gym (vor 16 Uhr) und 2 Std Business."],
+  ["14:57", "Gym-Check: Warst du schon trainieren?"],
+  ["16:57", "Nachmittag-Check: Business und Essen."],
+  ["19:27", "Abend: Abendessen, Lesen/Englisch, nichts Dummes."],
+  ["21:25", "Abend-Check: Alles abhaken, Tagebuch."],
+  ["21:57", "Handy weg. Schlafen."]
+];
+function berlin() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date()).map(x => [x.type, x.value]));
+  return { date: p.year + "-" + p.month + "-" + p.day, hm: p.hour + ":" + p.minute, y: +p.year, m: +p.month, d: +p.day };
+}
+function lagebild() {
+  const st = load("state", null), S = st && st.data; if (!S) return "Keine Daten.";
+  const b = berlin(), day = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(2026, 9, 1)) / 864e5) + 1;
+  const dd = (S.days || {})[day] || {}, h = dd.h || {};
+  const done = Object.keys(h).filter(k => h[k]);
+  const todos = (S.todos || []).filter(t => !t.done).slice(0, 5).map(t => t.t);
+  const food = (dd.food || []).reduce((a, x) => a + (+x.k || 0), 0), prot = (dd.food || []).reduce((a, x) => a + (+x.p || 0), 0);
+  const sd = dd.sd || {}, slots = S.slots || {}, open = [];
+  for (const k of ["mo", "vm", "nm", "ab"]) for (const x of (slots[k] || [])) if (!sd[x.id]) open.push(x.n);
+  return `Tag ${day}/90, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
+}
+async function proactive(topic) {
+  let body = topic;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: { "content-type": "application/json", "x-api-key": APIKEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: MODELS[0], max_tokens: 120, system: "Du bist JARVIS, persönlicher Assistent von Luis. Sprich ihn mit 'Boss' an, nie 'Kommandant'. Drill-Ton, motivierend, nie beleidigend. Schreib EINE Push-Nachricht: max. 2 kurze Sätze, max. 160 Zeichen, keine Emojis-Flut, konkret anhand der Daten (was noch offen ist). Nur der Nachrichtentext.",
+        messages: [{ role: "user", content: "Anlass: " + topic + "\nLagebild: " + lagebild() }] })
+    });
+    if (r.ok) { const j = await r.json(); const t = (j.content || []).filter(c => c.type === "text").map(c => c.text).join("").trim(); if (t) body = t.slice(0, 240); }
+  } catch {}
+  return pushAll({ title: "JARVIS", body, tag: "jarvis-" + Date.now() });
+}
+setInterval(() => {
+  const b = berlin(), sent = load("sent", {});
+  for (const [hm, topic] of SCHEDULE) {
+    const key = b.date + " " + hm;
+    if (b.hm === hm && !sent[key]) { sent[key] = 1; save("sent", Object.fromEntries(Object.entries(sent).slice(-50))); proactive(topic).catch(() => {}); }
+  }
+}, 20e3).unref();
+
 // ---------- Rate-Limits ----------
 const hits = new Map();
 function limited(key, max, winMs) {
@@ -120,6 +182,18 @@ const server = http.createServer(async (req, res) => {
       if (!b || typeof b.ts !== "number" || typeof b.data !== "object") return send(res, 400, { error: "ungültig" });
       if (b.ts < (cur.ts || 0)) return send(res, 409, cur);           // anderes Gerät war neuer
       save("state", { ts: b.ts, data: b.data, by: dev.id }); return send(res, 200, { ok: true, ts: b.ts });
+    }
+    if (url.pathname === "/api/push/key" && req.method === "GET") {
+      return send(res, 200, { key: VAPID && webpush ? VAPID.publicKey : null });
+    }
+    if (url.pathname === "/api/push/sub" && req.method === "POST") {
+      const b = await body(req); if (!b || !b.sub || !b.sub.endpoint) return send(res, 400, { error: "ungültig" });
+      const subs = load("subs", []).filter(x => x.sub.endpoint !== b.sub.endpoint && x.dev !== dev.id);
+      subs.push({ dev: dev.id, sub: b.sub, at: Date.now() }); save("subs", subs);
+      return send(res, 200, { ok: true });
+    }
+    if (url.pathname === "/api/push/test" && req.method === "POST") {
+      const n = await proactive("Test: Begrüße den Boss kurz und sag, dass Push jetzt läuft."); return send(res, 200, { sent: n });
     }
     if (url.pathname === "/api/claude" && req.method === "POST") {
       if (limited("claude:" + dev.id, 60, 600e3)) return send(res, 429, { error: "Kurz Pause, Boss." });
