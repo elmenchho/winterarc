@@ -405,6 +405,7 @@ img{max-width:100%}
   let dkRaw=null, dk=null, saveT=null, pending=null;
   const V=window.__vault={open:false,key:"",ck:null,sync:"",
     async setKey(k){ const v=load(); v.key=k?await seal(V.ck,k):null; save(v); V.key=k||""; },
+    async setSrv(o){ const v=load(); v.srv=o?await seal(V.ck,JSON.stringify(o)):null; save(v); V.srv=o||null; },
     async setSync(t){ const v=load(); v.sync=t?await seal(V.ck,t):null; save(v); V.sync=t||""; },
     async enc(obj){ return "E1."+await seal(dk,JSON.stringify(obj)); },
     async dec(str){ if(!str.startsWith("E1.")) return JSON.parse(str); return JSON.parse(await unseal(dk,str.slice(3))); },
@@ -436,7 +437,7 @@ img{max-width:100%}
     if(v.dk){ dkRaw=unb(await unseal(V.ck,v.dk)); }
     else { dkRaw=crypto.getRandomValues(new Uint8Array(32)); v.dk=await seal(V.ck,b64(dkRaw)); save(v); }
     dk=await crypto.subtle.importKey("raw",dkRaw,"AES-GCM",false,["encrypt","decrypt"]);
-    V.key=v.key?await unseal(V.ck,v.key):""; V.sync=v.sync?await unseal(V.ck,v.sync):"";
+    V.key=v.key?await unseal(V.ck,v.key):""; V.sync=v.sync?await unseal(V.ck,v.sync):""; V.srv=v.srv?JSON.parse(await unseal(V.ck,v.srv)):null;
     // migrate old plaintext secrets
     try{ const k=localStorage.getItem("wa-jarvis-key"); if(k){ if(!V.key) await V.setKey(k); localStorage.removeItem("wa-jarvis-key"); } }catch(e){}
     try{ const t=localStorage.getItem("wa-sync"); if(t){ if(!V.sync) await V.setSync(t); localStorage.removeItem("wa-sync"); } }catch(e){}
@@ -473,6 +474,7 @@ img{max-width:100%}
     if(st&&window.__applyState) window.__applyState(st); else if(window.__saveNow) window.__saveNow();
     if(window.__jvAfterUnlock) window.__jvAfterUnlock();
     if(window.__syncUnlock) window.__syncUnlock(V.sync);
+    if(window.__srvSync) window.__srvSync(true);
   }
   document.getElementById("lkPad").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b||busy) return;
@@ -729,7 +731,7 @@ img{max-width:100%}
     </div>
     <div class="jv-row">
       <span id="jvHint">Tippe oder sprich. Ich kann eintragen, abhaken und planen.</span>
-      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvKeyOff" type="button" hidden>Schlüssel</button><button id="jvClear">Neu</button></span>
+      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
     </div>
     <div class="jv-log" id="jvLog" aria-live="polite"></div>
     <div class="jv-off" id="jvOff" hidden></div>
@@ -1832,7 +1834,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       catch(e){ text=e&&e.text||""; el.classList.remove("think");
         if(e&&e.code==="cancelled"){ el.textContent=text||"Abgebrochen."; }
         else if(e&&(e.code==="tools_unavailable")){ J.tools=false; el.textContent="Moment, ohne Eintragen-Funktion…"; state.jarvis.pop(); setBusy(false); el.remove(); log.lastChild&&log.lastChild.remove(); return ask(q); }
-        else if(e&&e.code==="bad_key"){ el.textContent="Der Schlüssel funktioniert nicht, Boss. Trag ihn neu ein."; setApiKey(""); J.sample=null; keySetup(); }
+        else if(e&&e.code==="bad_key"){ el.textContent="Der Schlüssel funktioniert nicht, Boss. Trag ihn neu ein."; setApiKey(""); if(srv()) window.__vault.setSrv(null); J.sample=null; keySetup(); }
         else if(e&&e.code==="no_credit"){ el.textContent="Mein Guthaben ist leer, Boss. Lad auf console.anthropic.com unter Billing auf."; }
         else { el.textContent=(text?text+"\n\n":"")+(ERR[e&&e.code]||ERR.upstream_error); if(e&&["not_granted","sampling_disabled","not_declared","capability_disabled"].includes(e.code)) J.sample=null; }
       }
@@ -1911,9 +1913,10 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     const KEYLS="wa-jarvis-key", MODEL="claude-haiku-4-5-20251001";
     function apiKey(){ if(window.__vault) return window.__vault.open?(window.__vault.key||""):""; try{return localStorage.getItem(KEYLS)||"";}catch(e){return "";} }
     async function setApiKey(k){ if(window.__vault&&window.__vault.open){ await window.__vault.setKey(k); return; } try{ if(k) localStorage.setItem(KEYLS,k); else localStorage.removeItem(KEYLS);}catch(e){} }
+    function srv(){ return (window.__vault&&window.__vault.open&&window.__vault.srv)||null; }
     function apiSample(){
       const f=async(input,opts={})=>{
-        const key=apiKey(); if(!key) throw {code:"not_granted",message:"no key"};
+        const S=srv(), key=S?"":apiKey(); if(!S&&!key) throw {code:"not_granted",message:"no key"};
         const sys=input[0].content, msgs=input.slice(1).map(m=>({role:m.role,content:m.content}));
         while(msgs.length&&msgs[0].role!=="user") msgs.shift();
         if(!msgs.length) msgs.push({role:"user",content:"Hallo"});
@@ -1922,7 +1925,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         for(let round=0; round<6; round++){
           let r;
           try{
-            r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",signal:opts.signal,headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+            r=await fetch(S?S.url+"/api/claude":"https://api.anthropic.com/v1/messages",{method:"POST",signal:opts.signal,headers:S?{"content-type":"application/json","authorization":"Bearer "+S.token}:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
               body:JSON.stringify({model:MODEL,max_tokens:700,system:sys,messages:msgs,tools:tools.length?tools:undefined})});
           }catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled",text:all}; throw {code:"upstream_error",text:all}; }
           if(r.status===401||r.status===403) throw {code:"bad_key",text:all};
@@ -1947,22 +1950,43 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       f.limits=async()=>({tools:{maxCount:16}});
       return f;
     }
+    const INP='style="width:100%;margin:8px 0;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;box-sizing:border-box"';
     function keySetup(){
       const o=$("jvOff"); o.hidden=false;
-      o.innerHTML='<b style="color:var(--fg)">Jarvis-Gehirn verbinden</b><br>Einmal deinen Claude-API-Schlüssel eintragen (von console.anthropic.com → API Keys). Er bleibt nur auf diesem Gerät.<br>'+
+      o.innerHTML='<b style="color:var(--fg)">🛰 Mit deinem JARVIS-Server verbinden</b><br>Auf dem Server einen Kopplungscode erzeugen und hier eingeben. Dann laufen Gehirn und Daten über deinen Server.<br>'+
+        '<input id="jvSrvUrl" '+INP+' autocomplete="off" value="https://91-98-2-107.sslip.io" placeholder="https://…">'+
+        '<input id="jvSrvCode" '+INP+' autocomplete="off" autocapitalize="characters" placeholder="Kopplungscode (XXXXX-XXXXX)">'+
+        '<button class="btn" id="jvSrvOk" type="button">Mit Server verbinden</button>'+
+        '<details style="margin-top:14px;text-align:left"><summary>Ohne Server (nur Schlüssel auf diesem Gerät)</summary>'+
+        'Claude-API-Schlüssel von console.anthropic.com → API Keys.<br>'+
         '<input id="jvKey" type="password" autocomplete="off" placeholder="sk-ant-…" style="width:100%;margin:10px 0 8px;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;box-sizing:border-box">'+
-        '<button class="btn" id="jvKeyOk" type="button">Verbinden</button>';
-      st.textContent="Wartet auf Schlüssel.";
+        '<button class="btn" id="jvKeyOk" type="button">Verbinden</button></details>';
+      st.textContent="Wartet auf Verbindung.";
+      $("jvSrvOk").onclick=async()=>{
+        const url=$("jvSrvUrl").value.trim().replace(/\/+$/,""), code=$("jvSrvCode").value.trim().toUpperCase();
+        if(!/^https:\/\//.test(url)){ toast("Adresse muss mit https:// beginnen"); return; } if(code.length<8){ $("jvSrvCode").focus(); return; }
+        if(!window.__vault||!window.__vault.open){ toast("Erst entsperren"); return; }
+        $("jvSrvOk").disabled=true; $("jvSrvOk").textContent="Verbinde …";
+        try{
+          const nm=(/iPhone|Android/i.test(navigator.userAgent)?"Handy":/Mac/i.test(navigator.userAgent)?"MacBook":/Win/i.test(navigator.userAgent)?"Windows-PC":"Gerät");
+          const r=await fetch(url+"/api/pair",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({code,name:nm})});
+          const j=await r.json().catch(()=>({}));
+          if(!r.ok||!j.token){ toast(j.error||"Kopplung fehlgeschlagen"); $("jvSrvOk").disabled=false; $("jvSrvOk").textContent="Mit Server verbinden"; return; }
+          await window.__vault.setSrv({url,token:j.token,id:j.id});
+          o.hidden=true; o.innerHTML=""; useApi(); toast("Mit JARVIS-Server verbunden, Boss.");
+          if(window.__srvSync) window.__srvSync(true);
+        }catch(e){ toast("Server nicht erreichbar"); $("jvSrvOk").disabled=false; $("jvSrvOk").textContent="Mit Server verbinden"; }
+      };
       $("jvKeyOk").onclick=()=>{ const k=$("jvKey").value.trim(); if(!/^sk-ant-/.test(k)){ $("jvKey").focus(); toast("Schlüssel beginnt mit sk-ant-"); return; }
         setApiKey(k).then(()=>{ o.hidden=true; o.innerHTML=""; useApi(); toast("Jarvis ist online, Boss."); }); };
     }
-    function useApi(){ J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent="Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
-    $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
+    function useApi(){ J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
+    $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); if(window.__vault&&window.__vault.open) window.__vault.setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
     function offline(){ if(!window.claude||!window.claude.use){
         window.__jvAfterUnlock=()=>{ $("jvOff").hidden=true; offline(); };
         if(window.__vault&&!window.__vault.open){ st.textContent="Gesperrt."; return; }
-        if(apiKey()) useApi(); else keySetup(); return; } offlineOld(); }
+        if(srv()||apiKey()) useApi(); else keySetup(); return; } offlineOld(); }
     function offlineOld(){
       const o=$("jvOff"); o.hidden=false;
       o.innerHTML='Jarvis braucht sein Gehirn von Claude – das läuft nur in der <b>Claude-Version</b> deiner App.<br><a href="'+ARTIFACT_URL+'" target="_blank" rel="noopener">Jarvis in Claude öffnen →</a><br><small>Tipp: Den Link am Handy im Browser öffnen und „Zum Home-Bildschirm“ wählen.</small>';
@@ -2124,6 +2148,23 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) syncPull(); });
   syncUi(); if(syncTok) syncPull();
 
+
+  // ---------- Sync über den eigenen JARVIS-Server ----------
+  let srvTimer=null, srvBusy=false, srvAgain=false;
+  function S(){ return (window.__vault&&window.__vault.open&&window.__vault.srv)||null; }
+  async function srvReq(method,body){ const s=S(); const r=await fetch(s.url+"/api/state",{method,headers:{"content-type":"application/json","authorization":"Bearer "+s.token},body:body?JSON.stringify(body):undefined,cache:"no-store"}); const j=await r.json().catch(()=>({})); return {status:r.status,j}; }
+  function applyRemote(r){ if(r&&r.data&&r.data.days&&(r.ts||0)>(state._ts||0)){ state=norm(r.data); state._ts=r.ts; persistLocal(); render(); renderEditors(); if(window.__jarvisRedraw) window.__jarvisRedraw(); sMsg("🛰 Synchronisiert (vom Server geladen)"); return true; } return false; }
+  async function srvPull(){ if(!S()) return; try{ const {status,j}=await srvReq("GET"); if(status===401){ sMsg("🛰 Server: Gerät nicht mehr gekoppelt."); return; } if(status!==200) return;
+      if(!applyRemote(j)){ if((state._ts||0)>(j.ts||0)) srvPush(true); else sMsg("🛰 Synchronisiert ✓"); } }catch(e){ sMsg("🛰 Server gerade nicht erreichbar."); } }
+  async function srvPush(now){ if(!S()) return; if(!now){ clearTimeout(srvTimer); srvTimer=setTimeout(()=>srvPush(true),1200); return; }
+    if(srvBusy){ srvAgain=true; return; } srvBusy=true;
+    try{ const ts=state._ts||Date.now(); const {status,j}=await srvReq("PUT",{ts,data:state});
+      if(status===409) applyRemote(j); else if(status===200) sMsg("🛰 Synchronisiert ✓"); else if(status===401) sMsg("🛰 Server: Gerät nicht mehr gekoppelt."); }
+    catch(e){ sMsg("🛰 Offline – wird gesynct, sobald Internet da ist."); }
+    srvBusy=false; if(srvAgain){ srvAgain=false; srvPush(true); } }
+  window.__srvSync=pull=>{ if(pull) srvPull(); else srvPush(); };
+  const _persist2=persist; persist=function(){ _persist2(); srvPush(); };
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) srvPull(); });
   // ---------- Import per Link (#import=...) ----------
   function checkImport(){
     const h=location.hash||""; if(!h.startsWith("#import=")) return;
