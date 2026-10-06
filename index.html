@@ -352,6 +352,10 @@ details.setup .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px
 .jv-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:2px 2px 10px}
 .jv-row button{white-space:nowrap;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:600}
 .jv-row button[aria-pressed="true"]{color:#bfe8ff;border-color:rgba(61,178,255,.6)}
+.jv-talk{border:0;border-radius:999px;padding:13px 22px;font:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(135deg,#1d6fd6,#3db2ff);box-shadow:0 8px 24px -10px rgba(61,178,255,.8)}
+.jv-talk.on{background:linear-gradient(135deg,#c2410c,#ffb020);color:#1a1205;box-shadow:0 8px 24px -10px rgba(255,176,32,.8)}
+#jvVoiceSel{max-width:130px;background:var(--surface-2);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:4px 8px;font:inherit;font-size:12px;font-weight:600}
+.jv-row>span:last-child{flex-wrap:wrap;justify-content:flex-end}
 .jv-off{border:1px dashed var(--line);border-radius:14px;padding:14px;color:var(--muted);font-size:14px;line-height:1.5;text-align:center}
 .jv-off a{color:#bfe8ff}
 @media (prefers-reduced-motion:reduce){.jv-orb i,.jv-orb b{animation:none!important}}
@@ -366,6 +370,91 @@ img{max-width:100%}
 </style>
 </head>
 <body>
+<div id="lockScr" role="dialog" aria-label="App gesperrt">
+  <div class="lk-box">
+    <div class="lk-orb"></div>
+    <div class="lk-t" id="lkT">JARVIS</div>
+    <div class="lk-s" id="lkS">PIN eingeben</div>
+    <div class="lk-dots" id="lkDots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="lk-pad" id="lkPad">
+      <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button class="lk-x" data-k="reset">PIN vergessen</button><button>0</button><button class="lk-x" data-k="del">⌫</button>
+    </div>
+  </div>
+</div>
+<style>
+#lockScr{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 50% 30%,#0c2340 0,#06080c 60%);display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0) 16px env(safe-area-inset-bottom,0)}
+#lockScr[hidden]{display:none!important}
+.lk-box{width:100%;max-width:320px;text-align:center;color:#f3f6fa;font-family:system-ui,-apple-system,sans-serif}
+.lk-orb{width:70px;height:70px;margin:0 auto 14px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#bfe8ff 0,#3db2ff 35%,#1b4f9a 70%,#071426 100%);box-shadow:0 0 30px 4px rgba(61,178,255,.55)}
+.lk-t{font-weight:900;letter-spacing:.32em;font-size:20px;color:#bfe8ff;padding-left:.32em}
+.lk-s{color:#8c99ab;font-size:14px;margin:8px 0 18px;min-height:20px}
+.lk-dots{display:flex;gap:12px;justify-content:center;margin-bottom:26px}
+.lk-dots i{width:13px;height:13px;border-radius:50%;border:2px solid #3db2ff}
+.lk-dots i.on{background:#3db2ff;box-shadow:0 0 10px #3db2ff}
+.lk-dots.err{animation:lkshake .35s}
+@keyframes lkshake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.lk-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.lk-pad button{width:72px;height:72px;justify-self:center;border-radius:50%;border:1px solid #232d3c;background:#0f141c;color:#f3f6fa;font-size:24px;font-weight:600}
+.lk-pad button:active{background:#1d3a5c}
+.lk-pad .lk-x{width:auto;font-size:13px;color:#8c99ab;border:0;background:none}
+</style>
+<script>
+(function(){
+  const VK="wa-vault", enc=new TextEncoder(), dec=new TextDecoder();
+  const b64=a=>btoa(String.fromCharCode(...new Uint8Array(a))), unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+  const V=window.__vault={open:false,key:"",ck:null,
+    async setKey(k){ const v=load(); v.key=k?await seal(V.ck,k):null; save(v); V.key=k||""; },
+    lock(){ V.open=false; V.key=""; V.ck=null; show(); }
+  };
+  function load(){ try{return JSON.parse(localStorage.getItem(VK)||"null")||null;}catch(e){return null;} }
+  function save(v){ try{localStorage.setItem(VK,JSON.stringify(v));}catch(e){} }
+  async function derive(pin,salt){ const base=await crypto.subtle.importKey("raw",enc.encode(pin),"PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]); }
+  async function seal(ck,t){ const iv=crypto.getRandomValues(new Uint8Array(12)); const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},ck,enc.encode(t)); return b64(iv)+"."+b64(ct); }
+  async function unseal(ck,s){ const [i,c]=s.split("."); return dec.decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:unb(i)},ck,unb(c))); }
+
+  const scr=document.getElementById("lockScr"), dots=[...document.querySelectorAll("#lkDots i")], S=document.getElementById("lkS");
+  let pin="", first=null, busy=false;
+  function draw(){ dots.forEach((d,i)=>d.classList.toggle("on",i<pin.length)); }
+  function err(msg){ S.textContent=msg; const d=document.getElementById("lkDots"); d.classList.remove("err"); void d.offsetWidth; d.classList.add("err"); pin=""; draw(); if(navigator.vibrate) navigator.vibrate(120); }
+  function show(){ pin=""; draw(); scr.hidden=false; const v=load(); S.textContent=v?"PIN eingeben":(first?"PIN wiederholen":"Neue 6-stellige PIN festlegen"); }
+  function lockedUntil(){ const v=load(); return v&&v.wait?v.wait:0; }
+  async function done(){
+    busy=true; const v=load();
+    try{
+      if(!v){
+        if(!first){ first=pin; pin=""; draw(); S.textContent="PIN wiederholen"; busy=false; return; }
+        if(pin!==first){ first=null; err("Stimmt nicht überein. Neue PIN festlegen"); busy=false; return; }
+        const salt=crypto.getRandomValues(new Uint8Array(16)), ck=await derive(pin,salt);
+        const nv={salt:b64(salt),check:await seal(ck,"ok"),key:null,fails:0};
+        let old=""; try{old=localStorage.getItem("wa-jarvis-key")||"";}catch(e){}
+        if(old){ nv.key=await seal(ck,old); try{localStorage.removeItem("wa-jarvis-key");}catch(e){} }
+        save(nv); V.ck=ck; V.key=old; first=null; unlocked(); busy=false; return;
+      }
+      if(Date.now()<lockedUntil()){ err("Zu viele Versuche. Kurz warten."); busy=false; return; }
+      const ck=await derive(pin,unb(v.salt));
+      try{ if(await unseal(ck,v.check)!=="ok") throw 0; }catch(e){
+        v.fails=(v.fails||0)+1; if(v.fails>=5) v.wait=Date.now()+Math.min(3600e3,30e3*Math.pow(2,v.fails-5)); save(v);
+        err(v.fails>=5?"Falsch. Gesperrt für "+Math.round((v.wait-Date.now())/1000)+" s":"Falsche PIN"); busy=false; return; }
+      v.fails=0; v.wait=0; save(v); V.ck=ck; V.key=v.key?await unseal(ck,v.key):""; unlocked();
+    }catch(e){ err("Fehler. Nochmal."); }
+    busy=false;
+  }
+  function unlocked(){ V.open=true; scr.hidden=true; pin=""; draw(); if(window.__jvAfterUnlock) window.__jvAfterUnlock(); }
+  document.getElementById("lkPad").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b||busy) return;
+    const k=b.dataset.k;
+    if(k==="del"){ pin=pin.slice(0,-1); draw(); return; }
+    if(k==="reset"){ if(confirm("PIN vergessen? Dann wird nur der gespeicherte Jarvis-Schlüssel gelöscht – deine Daten bleiben. Du legst eine neue PIN fest und trägst den Schlüssel neu ein.")){ try{localStorage.removeItem(VK);}catch(e){} first=null; show(); } return; }
+    if(pin.length<6){ pin+=b.textContent; draw(); if(pin.length===6) done(); }
+  });
+  // auto-lock after 2 minutes in background
+  let hiddenAt=0;
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden) hiddenAt=Date.now(); else if(V.open&&hiddenAt&&Date.now()-hiddenAt>120e3) V.lock(); });
+  if(!window.crypto||!crypto.subtle){ scr.hidden=true; V.open=true; V.key=""; window.__vault=null; } else show();
+})();
+</script>
+
 
 <div class="app">
   <div class="tabs" role="tablist">
@@ -596,6 +685,7 @@ img{max-width:100%}
       <button class="jv-orb" id="jvOrb" aria-label="Mit Jarvis sprechen"><i></i><i></i><i></i><b></b></button>
       <div class="jv-name">JARVIS</div>
       <div class="jv-st" id="jvSt">Online. Bereit, Boss.</div>
+      <button class="jv-talk" id="jvTalk" type="button">🎙  Mit Jarvis reden</button>
     </div>
     <div class="jv-chips" id="jvChips">
       <button data-q="Wie steh ich heute? Kurzer Lagebericht.">Lagebericht</button>
@@ -607,7 +697,7 @@ img{max-width:100%}
     </div>
     <div class="jv-row">
       <span id="jvHint">Tippe oder sprich. Ich kann eintragen, abhaken und planen.</span>
-      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><button id="jvClear">Neu</button></span>
+      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvKeyOff" type="button" hidden>Schlüssel</button><button id="jvClear">Neu</button></span>
     </div>
     <div class="jv-log" id="jvLog" aria-live="polite"></div>
     <div class="jv-off" id="jvOff" hidden></div>
@@ -1653,14 +1743,27 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       const open=state.todos.filter(x=>!x.done).length;
       return "Tag "+d+"/90. "+n+"/"+HABITS.length+" Haken. Heute: "+WORKOUTS[rot(d)].name+"."+(open?" "+open+" To-do"+(open>1?"s":"")+" offen.":"")+" Was steht an?";
     }
-    function setBusy(b,txt){J.busy=b; orb.classList.toggle("busy",b); $("jvStop").hidden=!b; $("jvSend").hidden=b; st.textContent=txt||(b?"Denke nach…":"Online. Bereit, Boss.");}
+    function setBusy(b,txt){J.busy=b; orb.classList.toggle("busy",b); $("jvStop").hidden=!b; $("jvSend").hidden=b; st.textContent=txt||(b?"Denke nach…":"Online. Bereit, Boss."); if(!b) talkUI();}
 
+    J.speaking=false;
+    function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking) listen(true); },250); }
     function speak(text){
-      if(!J.voice||!("speechSynthesis" in window)) return;
-      try{speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.replace(/[*_#>`]/g,"")); u.lang="de-DE"; u.rate=1.05; u.pitch=.9;
-        const v=speechSynthesis.getVoices().filter(v=>/^de/i.test(v.lang)); const pick=v.find(x=>/male|mann|yannick|markus|daniel|conrad|stefan/i.test(x.name))||v[0]; if(pick) u.voice=pick;
-        u.onstart=()=>orb.classList.add("speak"); u.onend=u.onerror=()=>orb.classList.remove("speak"); speechSynthesis.speak(u);}catch(e){}
+      if(!(J.voice||J.talk)||!("speechSynthesis" in window)||!text){ if(J.talk) speakDone(); return; }
+      try{speechSynthesis.cancel(); const clean=text.replace(/\[[^\]]*\]/g,"").replace(/[*_#>`]/g,"");
+        const u=new SpeechSynthesisUtterance(clean); u.lang="de-DE"; u.rate=.97; u.pitch=.82;
+        const pick=chosenVoice(); if(pick) u.voice=pick;
+        J.speaking=true; u.onstart=()=>{orb.classList.add("speak"); st.textContent="Jarvis spricht…";}; u.onend=u.onerror=speakDone; speechSynthesis.speak(u);
+        const guard=setInterval(()=>{ if(!speechSynthesis.speaking){ clearInterval(guard); if(J.speaking) speakDone(); } },700);
+      }catch(e){ speakDone(); }
     }
+    function deVoices(){ try{ return speechSynthesis.getVoices().filter(v=>/^de/i.test(v.lang)); }catch(e){ return []; } }
+    function chosenVoice(){ const v=deVoices(); let want=""; try{want=localStorage.getItem(LS+"-jvvoicename")||"";}catch(e){}
+      return v.find(x=>x.name===want)||v.find(x=>/yannick|markus|martin|conrad|daniel|stefan|reed|eddy|male|mann/i.test(x.name))||v[0]||null; }
+    function fillVoices(){ const sel=$("jvVoiceSel"), v=deVoices(); if(!v.length){ sel.hidden=true; return; }
+      const cur=chosenVoice(); sel.innerHTML=v.map(x=>'<option'+(cur&&x.name===cur.name?' selected':'')+'>'+esc(x.name)+'</option>').join(""); sel.hidden=false; }
+    try{ fillVoices(); speechSynthesis.onvoiceschanged=fillVoices; }catch(e){}
+    $("jvVoiceSel").onchange=()=>{ try{localStorage.setItem(LS+"-jvvoicename",$("jvVoiceSel").value);}catch(e){} J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); speak("So klinge ich jetzt, Boss. Bereit, wenn du es bist."); };
+    function unlockTTS(){ try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
     function setVoiceBtn(){const b=$("jvVoice"); b.setAttribute("aria-pressed",String(J.voice)); b.textContent=J.voice?"🔊 An":"🔈 Aus";}
     $("jvVoice").onclick=()=>{J.voice=!J.voice; try{localStorage.setItem(LS+"-jvvoice",J.voice?"1":"0");}catch(e){} setVoiceBtn(); if(J.voice) speak("Stimme aktiv, Boss."); else try{speechSynthesis.cancel();}catch(e){}};
     setVoiceBtn();
@@ -1671,6 +1774,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       q=String(q||"").trim(); if(!q||J.busy) return;
       if(!J.sample){ offline(); return; }
       try{speechSynthesis.cancel();}catch(e){}
+      try{J.rec&&J.rec.abort();}catch(e){} J.rec=null; clearTimeout(dTimer); dbuf="";
       bubble("u",q); inp.value=""; grow();
       state.jarvis.push({role:"user",content:q});
       const el=bubble("a","…"); el.classList.add("think");
@@ -1678,7 +1782,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       const before=JSON.stringify(state); acts=[];
       const turns=state.jarvis.slice(-12);
       while(turns.length&&turns[0].role!=="user") turns.shift();
-      const input=[{role:"user",content:RULES+"\n\n===== LAGEBILD =====\n"+snapshot()+"\n===== ENDE LAGEBILD =====\n\nAntworte ab jetzt als Jarvis auf Luis' Nachrichten."},...turns];
+      const talkNote=J.talk?"\n\n(Er SPRICHT gerade mit dir, deine Antwort wird vorgelesen: antworte in 1–3 kurzen, natürlich gesprochenen Sätzen, ohne Listen, Sonderzeichen oder Emojis.)":"";
+      const input=[{role:"user",content:RULES+"\n\n===== LAGEBILD =====\n"+snapshot()+"\n===== ENDE LAGEBILD =====\n\nAntworte ab jetzt als Jarvis auf Luis' Nachrichten."+talkNote},...turns];
       J.ctl=new AbortController();
       const opts={signal:J.ctl.signal,cache:false,modelTier:"quick",onText:({text})=>{el.classList.remove("think"); el.textContent=text; el.scrollIntoView({block:"end"});}};
       if(J.tools){delete opts.cache; opts.tools=TOOLS.map(t=>Object.assign({},t,{execute:(i,c)=>{st.textContent="Trage ein…"; return t.execute(i||{},c);}}));}
@@ -1687,6 +1792,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       catch(e){ text=e&&e.text||""; el.classList.remove("think");
         if(e&&e.code==="cancelled"){ el.textContent=text||"Abgebrochen."; }
         else if(e&&(e.code==="tools_unavailable")){ J.tools=false; el.textContent="Moment, ohne Eintragen-Funktion…"; state.jarvis.pop(); setBusy(false); el.remove(); log.lastChild&&log.lastChild.remove(); return ask(q); }
+        else if(e&&e.code==="bad_key"){ el.textContent="Der Schlüssel funktioniert nicht, Boss. Trag ihn neu ein."; setApiKey(""); J.sample=null; keySetup(); }
+        else if(e&&e.code==="no_credit"){ el.textContent="Mein Guthaben ist leer, Boss. Lad auf console.anthropic.com unter Billing auf."; }
         else { el.textContent=(text?text+"\n\n":"")+(ERR[e&&e.code]||ERR.upstream_error); if(e&&["not_granted","sampling_disabled","not_declared","capability_disabled"].includes(e.code)) J.sample=null; }
       }
       if(acts.length){ const box=document.createElement("div"); box.className="jv-acts"; acts.forEach(a=>{const s=document.createElement("span"); s.textContent=a; box.appendChild(s);});
@@ -1695,7 +1802,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       if(text){ state.jarvis.push({role:"assistant",content:text+(acts.length?"\n["+acts.join(", ")+"]":"")}); }
       else state.jarvis.pop();
       if(state.jarvis.length>30) state.jarvis=state.jarvis.slice(-30);
-      persist(); setBusy(false); speak(text);
+      persist(); setBusy(false); if(J.talk||J.voice) speak(text); else talkUI();
     }
     function celebrateMaybe(){const d=today(); if(pct(d)===1) celebrate("Perfekter Tag, Boss!",true);}
 
@@ -1707,26 +1814,116 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     $("jvChips").addEventListener("click",e=>{const b=e.target.closest("[data-q]"); if(b) ask(b.dataset.q);});
     $("jvClear").onclick=()=>{state.jarvis=[]; persist(); drawHistory();};
 
-    // ---- voice input ----
+    // ---- voice: Gesprächsmodus ----
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    function listen(){
-      if(!SR){ inp.focus(); st.textContent="Tipp aufs Mikro deiner Tastatur zum Diktieren."; return; }
-      if(J.rec){ J.rec.stop(); return; }
-      try{
-        const r=new SR(); r.lang="de-DE"; r.interimResults=true; r.continuous=false; J.rec=r;
-        let final="";
-        r.onstart=()=>{orb.classList.add("listen"); $("jvMic").classList.add("on"); st.textContent="Ich höre, Boss…";};
-        r.onresult=e=>{let t=""; for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) final+=e.results[i][0].transcript; else t+=e.results[i][0].transcript; } inp.value=(final+t).trim(); grow();};
-        r.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){ $("jvMic").hidden=true; st.textContent="Mikro hier gesperrt – nutz das Diktier-Mikro deiner Tastatur."; } };
-        r.onend=()=>{orb.classList.remove("listen"); $("jvMic").classList.remove("on"); J.rec=null; if(!J.busy) st.textContent="Online. Bereit, Boss."; const q=inp.value.trim(); if(final.trim()&&q) ask(q);};
-        r.start();
-      }catch(e){ J.rec=null; st.textContent="Mikro nicht verfügbar – tipp aufs Diktier-Mikro deiner Tastatur."; }
+    J.talk=false; J.dict=null; let dbuf="", dTimer=null;
+    function talkUI(){
+      const on=J.talk; $("jvMic").classList.toggle("on",on); $("jvTalk").classList.toggle("on",on);
+      $("jvTalk").textContent=on?"■  Gespräch beenden":"🎙  Mit Jarvis reden";
+      const hearing=on&&!J.busy&&!J.speaking;
+      orb.classList.toggle("listen",hearing);
+      if(on&&!J.busy&&!J.speaking) st.textContent="Ich höre, Boss… sprich einfach.";
+      else if(!on&&!J.busy&&!J.speaking) st.textContent="Online. Bereit, Boss.";
     }
-    if(SR) $("jvMic").hidden=false;
-    $("jvMic").onclick=listen;
-    orb.onclick=()=>{ if(J.busy){J.ctl&&J.ctl.abort(); return;} if(SR) listen(); else inp.focus(); };
+    function stopTalk(msg){ J.talk=false; clearTimeout(dTimer); dbuf=""; try{J.dict&&J.dict.stop();}catch(e){} try{J.rec&&J.rec.abort();}catch(e){} J.rec=null; try{speechSynthesis.cancel();}catch(e){} J.speaking=false; orb.classList.remove("speak"); talkUI(); if(msg) st.textContent=msg; }
+    function heard(text){ // settled words while talking
+      if(!J.talk||J.busy||J.speaking||Date.now()<(J.quietUntil||0)) return;
+      dbuf=(dbuf+text).replace(/^\s+/,""); inp.value=dbuf; grow();
+      clearTimeout(dTimer); dTimer=setTimeout(()=>{ const q=dbuf.trim(); dbuf=""; if(q&&J.talk&&!J.busy) ask(q); },1500);
+    }
+    // browser speech recognition (Chrome/Android/Safari when allowed)
+    function listen(auto){
+      if(!SR) return false;
+      if(J.rec) return true;
+      try{
+        const r=new SR(); r.lang="de-DE"; r.interimResults=true; r.continuous=false; J.rec=r; let fin="";
+        r.onresult=e=>{ if(J.busy||J.speaking) return; let t=""; for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) fin+=e.results[i][0].transcript; else t+=e.results[i][0].transcript; } inp.value=(fin+t).trim(); grow(); };
+        r.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"||e.error==="audio-capture"){ J.recBlocked=true; micBlocked(); } };
+        r.onend=()=>{ J.rec=null; const q=fin.trim(); if(q&&J.talk&&!J.busy){ inp.value=q; ask(q); } else if(J.talk&&!J.busy&&!J.speaking&&!J.recBlocked){ setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking) listen(true); },200); } };
+        r.start(); talkUI(); return true;
+      }catch(e){ J.rec=null; return false; }
+    }
+    function micBlocked(){ stopTalk("Mikro hier gesperrt – tipp aufs 🎙 deiner Tastatur und sende, ich antworte laut.");
+      J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); inp.focus();
+      speak("Das Mikro ist hier gesperrt, Boss. Sprich über die Tastatur, ich antworte dir laut."); }
+    function startTalk(){ // MUST run inside the tap
+      unlockTTS(); J.talk=true; J.recBlocked=false; dbuf="";
+      if(J.dict){
+        J.dict.start({language:"de-DE"}).then(()=>talkUI()).catch(e=>{
+          const c=e&&e.code; J.talk=false; talkUI();
+          if(c==="not_granted") st.textContent="Mikro nicht erlaubt. In den Berechtigungen der App freigeben.";
+          else if(c==="unavailable"){ J.dict=null; if(!listen()) st.textContent="Sprechen geht hier nicht – nutz das Diktier-Mikro deiner Tastatur."; else {J.talk=true; talkUI();} }
+          else if(c!=="stopped") st.textContent="Mikro-Problem. Tipp nochmal.";
+        });
+        talkUI(); return;
+      }
+      if(!listen()){ J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); inp.focus(); st.textContent="Sprich übers 🎙 deiner Tastatur und tipp Senden – ich antworte laut."; speak("Bereit, Boss. Sprich über die Tastatur, ich antworte laut."); }
+    }
+    function toggleTalk(){ if(J.busy){ J.ctl&&J.ctl.abort(); return; } if(J.talk) stopTalk(); else startTalk(); }
+    orb.onclick=toggleTalk; $("jvMic").onclick=toggleTalk; $("jvTalk").onclick=toggleTalk; $("jvMic").hidden=false;
+    (async()=>{ try{ if(!window.claude||!window.claude.use) return; const d=await window.claude.use("dictation"); if(!d) return; J.dict=d;
+      d.onPartial(({text})=>{ if(J.talk&&!J.busy&&!J.speaking&&text){ inp.value=(dbuf+" "+text).trim(); grow(); } });
+      d.onFinal(({text})=>heard(text));
+      d.onState(({state,reason})=>{ if(state==="idle"&&J.talk){ J.talk=false; talkUI(); if(reason==="hidden") st.textContent="Gespräch pausiert. Tipp aufs Orb zum Weiterreden."; else if(reason==="time_limit") st.textContent="60 Minuten um. Tipp nochmal."; else if(reason==="not_granted") st.textContent="Mikro nicht erlaubt."; } });
+    }catch(e){} })();
 
-    function offline(){
+    // ---- eigenes Gehirn (Claude-API mit eigenem Schlüssel) für die Homescreen-App ----
+    const KEYLS="wa-jarvis-key", MODEL="claude-haiku-4-5-20251001";
+    function apiKey(){ if(window.__vault) return window.__vault.open?(window.__vault.key||""):""; try{return localStorage.getItem(KEYLS)||"";}catch(e){return "";} }
+    async function setApiKey(k){ if(window.__vault&&window.__vault.open){ await window.__vault.setKey(k); return; } try{ if(k) localStorage.setItem(KEYLS,k); else localStorage.removeItem(KEYLS);}catch(e){} }
+    function apiSample(){
+      const f=async(input,opts={})=>{
+        const key=apiKey(); if(!key) throw {code:"not_granted",message:"no key"};
+        const sys=input[0].content, msgs=input.slice(1).map(m=>({role:m.role,content:m.content}));
+        while(msgs.length&&msgs[0].role!=="user") msgs.shift();
+        if(!msgs.length) msgs.push({role:"user",content:"Hallo"});
+        const tools=(opts.tools||[]).map(t=>({name:t.name,description:t.description,input_schema:t.inputSchema||{type:"object",properties:{}}}));
+        let all="";
+        for(let round=0; round<6; round++){
+          let r;
+          try{
+            r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",signal:opts.signal,headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+              body:JSON.stringify({model:MODEL,max_tokens:700,system:sys,messages:msgs,tools:tools.length?tools:undefined})});
+          }catch(e){ if(e&&e.name==="AbortError") throw {code:"cancelled",text:all}; throw {code:"upstream_error",text:all}; }
+          if(r.status===401||r.status===403) throw {code:"bad_key",text:all};
+          if(r.status===429||r.status===529) throw {code:"rate_limited",text:all};
+          if(r.status===400){ let m=""; try{m=(await r.json()).error.message||"";}catch(e){} throw {code:/credit|balance/i.test(m)?"no_credit":"upstream_error",message:m,text:all}; }
+          if(!r.ok) throw {code:"upstream_error",text:all};
+          const j=await r.json();
+          const txt=(j.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("");
+          if(txt){ all=all?all+"\n\n"+txt:txt; opts.onText&&opts.onText({text:all,delta:txt}); }
+          const uses=(j.content||[]).filter(c=>c.type==="tool_use");
+          if(j.stop_reason!=="tool_use"||!uses.length) break;
+          msgs.push({role:"assistant",content:j.content});
+          const results=[];
+          for(const u of uses){ const t=(opts.tools||[]).find(x=>x.name===u.name); let out;
+            try{ out=t?await t.execute(u.input||{},{signal:opts.signal}):"Error: unknown tool"; }catch(e){ out="Error: "+(e&&e.message||e); }
+            results.push({type:"tool_result",tool_use_id:u.id,content:typeof out==="string"?out:JSON.stringify(out)}); }
+          msgs.push({role:"user",content:results});
+        }
+        if(!all) throw {code:"empty_completion"};
+        return {text:all,truncated:false};
+      };
+      f.limits=async()=>({tools:{maxCount:16}});
+      return f;
+    }
+    function keySetup(){
+      const o=$("jvOff"); o.hidden=false;
+      o.innerHTML='<b style="color:var(--fg)">Jarvis-Gehirn verbinden</b><br>Einmal deinen Claude-API-Schlüssel eintragen (von console.anthropic.com → API Keys). Er bleibt nur auf diesem Gerät.<br>'+
+        '<input id="jvKey" type="password" autocomplete="off" placeholder="sk-ant-…" style="width:100%;margin:10px 0 8px;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;box-sizing:border-box">'+
+        '<button class="btn" id="jvKeyOk" type="button">Verbinden</button>';
+      st.textContent="Wartet auf Schlüssel.";
+      $("jvKeyOk").onclick=()=>{ const k=$("jvKey").value.trim(); if(!/^sk-ant-/.test(k)){ $("jvKey").focus(); toast("Schlüssel beginnt mit sk-ant-"); return; }
+        setApiKey(k).then(()=>{ o.hidden=true; o.innerHTML=""; useApi(); toast("Jarvis ist online, Boss."); }); };
+    }
+    function useApi(){ J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent="Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
+    $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
+    let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
+    function offline(){ if(!window.claude||!window.claude.use){
+        window.__jvAfterUnlock=()=>{ $("jvOff").hidden=true; offline(); };
+        if(window.__vault&&!window.__vault.open){ st.textContent="Gesperrt."; return; }
+        if(apiKey()) useApi(); else keySetup(); return; } offlineOld(); }
+    function offlineOld(){
       const o=$("jvOff"); o.hidden=false;
       o.innerHTML='Jarvis braucht sein Gehirn von Claude – das läuft nur in der <b>Claude-Version</b> deiner App.<br><a href="'+ARTIFACT_URL+'" target="_blank" rel="noopener">Jarvis in Claude öffnen →</a><br><small>Tipp: Den Link am Handy im Browser öffnen und „Zum Home-Bildschirm“ wählen.</small>';
       st.textContent="Offline – nur in der Claude-Version aktiv.";
