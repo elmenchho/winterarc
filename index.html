@@ -1699,7 +1699,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function setBusy(b,txt){J.busy=b; orb.classList.toggle("busy",b); $("jvStop").hidden=!b; $("jvSend").hidden=b; st.textContent=txt||(b?"Denke nach…":"Online. Bereit, Boss."); if(!b) talkUI();}
 
     J.speaking=false;
-    function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking) listen(true); },250); }
+    function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking){ if(REC.stream) earListen(); else listen(true); } },400); }
     const AUD=new Audio(); AUD.preload="auto"; let premium=false, audUnlocked=false;
     function premiumOn(){ try{ return premium&&localStorage.getItem(LS+"-jvvoicename")!=="__device"&&!(localStorage.getItem(LS+"-jvvoicename")||"").length; }catch(e){ return premium; } }
     async function speakPremium(text){
@@ -1798,7 +1798,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       if(on&&!J.busy&&!J.speaking) st.textContent="Ich höre, Boss… sprich einfach.";
       else if(!on&&!J.busy&&!J.speaking) st.textContent="Online. Bereit, Boss.";
     }
-    function stopTalk(msg){ J.talk=false; clearTimeout(dTimer); dbuf=""; try{J.dict&&J.dict.stop();}catch(e){} try{J.rec&&J.rec.abort();}catch(e){} J.rec=null; try{speechSynthesis.cancel();}catch(e){} J.speaking=false; orb.classList.remove("speak"); talkUI(); if(msg) st.textContent=msg; }
+    function stopTalk(msg){ try{earStop();}catch(e){} J.talk=false; clearTimeout(dTimer); dbuf=""; try{J.dict&&J.dict.stop();}catch(e){} try{J.rec&&J.rec.abort();}catch(e){} J.rec=null; try{speechSynthesis.cancel();}catch(e){} J.speaking=false; orb.classList.remove("speak"); talkUI(); if(msg) st.textContent=msg; }
     function heard(text){ // settled words while talking
       if(!J.talk||J.busy||J.speaking||Date.now()<(J.quietUntil||0)) return;
       dbuf=(dbuf+text).replace(/^\s+/,""); inp.value=dbuf; grow();
@@ -1819,8 +1819,38 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function micBlocked(){ stopTalk("Mikro hier gesperrt – tipp aufs 🎙 deiner Tastatur und sende, ich antworte laut.");
       J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); inp.focus();
       speak("Das Mikro ist hier gesperrt, Boss. Sprich über die Tastatur, ich antworte dir laut."); }
+    // ---- Zuhören über deinen Server (ElevenLabs) ----
+    const REC={stream:null,ctx:null,an:null,mr:null,chunks:[],raf:0,on:false};
+    function canServerEar(){ return !!(srv()&&premium&&window.MediaRecorder&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia); }
+    async function earStart(){
+      if(!REC.stream){ REC.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
+      if(!REC.ctx){ REC.ctx=new (window.AudioContext||window.webkitAudioContext)(); const src=REC.ctx.createMediaStreamSource(REC.stream); REC.an=REC.ctx.createAnalyser(); REC.an.fftSize=1024; src.connect(REC.an); }
+      if(REC.ctx.state==="suspended") await REC.ctx.resume();
+      earListen();
+    }
+    function earListen(){
+      if(!J.talk||J.busy||J.speaking||REC.on) return;
+      const type=["audio/webm;codecs=opus","audio/mp4","audio/webm"].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||"";
+      const mr=new MediaRecorder(REC.stream,type?{mimeType:type}:undefined); REC.mr=mr; REC.chunks=[]; REC.on=true;
+      mr.ondataavailable=e=>{ if(e.data&&e.data.size) REC.chunks.push(e.data); };
+      const buf=new Uint8Array(REC.an.fftSize); let spoke=false, lastLoud=0, t0=performance.now();
+      mr.onstop=async()=>{ REC.on=false; cancelAnimationFrame(REC.raf);
+        if(!spoke||!J.talk){ if(J.talk&&!J.busy&&!J.speaking) setTimeout(earListen,150); return; }
+        const blob=new Blob(REC.chunks,{type:mr.mimeType||"audio/webm"}); st.textContent="Verstehe…";
+        try{ const S=srv(); const r=await fetch(S.url+"/api/stt",{method:"POST",headers:{"content-type":blob.type,authorization:"Bearer "+S.token},body:blob}); const j=await r.json();
+          const q=(j.text||"").trim(); if(q&&J.talk){ inp.value=q; ask(q); } else if(J.talk){ talkUI(); setTimeout(earListen,150); } }
+        catch(e){ st.textContent="Hören fehlgeschlagen."; if(J.talk) setTimeout(earListen,800); } };
+      mr.start(250); talkUI();
+      const tick=()=>{ if(!REC.on) return; REC.an.getByteTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++){ const v=(buf[i]-128)/128; sum+=v*v; } const rms=Math.sqrt(sum/buf.length), now=performance.now();
+        if(rms>0.04){ if(!spoke){ spoke=true; st.textContent="Ich höre…"; } lastLoud=now; }
+        if((spoke&&now-lastLoud>1300)||(!spoke&&now-t0>15000)||now-t0>45000||!J.talk||J.speaking){ try{mr.stop();}catch(e){} return; }
+        REC.raf=requestAnimationFrame(tick); };
+      REC.raf=requestAnimationFrame(tick);
+    }
+    function earStop(){ try{ REC.mr&&REC.mr.state!=="inactive"&&REC.mr.stop(); }catch(e){} REC.on=false; if(REC.stream){ REC.stream.getTracks().forEach(t=>t.stop()); REC.stream=null; } if(REC.ctx){ try{REC.ctx.close();}catch(e){} REC.ctx=null; } }
     function startTalk(){ // MUST run inside the tap
       unlockTTS(); J.talk=true; J.recBlocked=false; dbuf="";
+      if(canServerEar()){ J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); talkUI(); earStart().catch(()=>{ stopTalk("Mikro nicht erlaubt – in den iPhone-Einstellungen freigeben."); }); return; }
       if(J.dict){
         J.dict.start({language:"de-DE"}).then(()=>talkUI()).catch(e=>{
           const c=e&&e.code; J.talk=false; talkUI();
