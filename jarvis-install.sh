@@ -8,7 +8,7 @@ HOST="${JARVIS_HOST:-${IP//./-}.sslip.io}"
 
 echo ">> Pakete installieren (Node.js, Caddy) …"
 apt-get update -qq
-apt-get install -y -qq nodejs caddy curl >/dev/null
+apt-get install -y -qq nodejs npm caddy curl >/dev/null
 node -e 'const v=+process.versions.node.split(".")[0]; if(v<20){console.error("Node zu alt: "+process.version); process.exit(1)}'
 
 echo ">> Benutzer & Ordner …"
@@ -18,6 +18,8 @@ install -d -m 750 -o root -g jarvis /etc/jarvis
 install -d -m 755 /opt/jarvis
 curl -fsSL "$SRC/jarvis-server.js" -o /opt/jarvis/jarvis-server.js
 chmod 644 /opt/jarvis/jarvis-server.js
+echo ">> Push-Modul …"
+( cd /opt/jarvis && [ -d node_modules/web-push ] || npm install --silent --no-audit --no-fund web-push@3 >/dev/null )
 
 if [ ! -s /etc/jarvis/master.key ]; then
   head -c 32 /dev/urandom | base64 > /etc/jarvis/master.key
@@ -94,6 +96,6 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
 done
 echo
 if [ "${OK:-}" = 1 ]; then echo "   ✅ JARVIS ist online:  https://$HOST"; else echo "   ⚠️  HTTPS noch nicht bereit – in 1 Min nochmal: curl https://$HOST/api/health"; fi
-sudo -u jarvis node /opt/jarvis/jarvis-server.js pair
+if [ "${1:-}" != "update" ]; then sudo -u jarvis node /opt/jarvis/jarvis-server.js pair; fi
 echo "   Server-Adresse für die App:  https://$HOST"
 echo "   JARVIS-INSTALL FERTIG"
