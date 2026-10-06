@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # JARVIS Home-Base Installer (Ubuntu). Ausführen als root.
 set -euo pipefail
+if [ "${1:-}" = "setvoice" ]; then
+  [ -n "${2:-}" ] || { echo "   Voice-ID fehlt."; exit 1; }
+  printf '%s' "$2" > /etc/jarvis/voice.id; chown root:jarvis /etc/jarvis/voice.id; chmod 640 /etc/jarvis/voice.id
+  echo "   ✅ Stimme gewechselt. JARVIS-STIMME FERTIG"; exit 0
+fi
 if [ "${1:-}" = "voice" ]; then
   echo ">> ElevenLabs-Schlüssel einfügen. Man sieht beim Tippen NICHTS – das ist Absicht."
   read -rsp "   Schlüssel: " K </dev/tty; echo
