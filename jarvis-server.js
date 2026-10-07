@@ -93,6 +93,29 @@ function lagebild() {
   for (const k of ["mo", "vm", "nm", "ab"]) for (const x of (slots[k] || [])) if (!sd[x.id]) open.push(x.n);
   return `Tag ${day}/90, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
 }
+async function ttsBuffer(text) {
+  let key = ""; try { key = rd("elevenlabs.key"); } catch {}
+  if (!key) return null;
+  let voice = "onwK4e9ZLuTAKqWW03F9"; try { voice = rd("voice.id") || voice; } catch {}
+  const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
+    method: "POST", headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
+    body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", apply_text_normalization: "on", voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true } })
+  });
+  return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
+}
+async function greetText() {
+  const b = berlin(), h = +b.hm.slice(0, 2);
+  const fallback = (h < 11 ? "Guten Morgen" : h < 18 ? "Willkommen zurück" : "Guten Abend") + ", Sir. Alle Systeme sind online.";
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: { "content-type": "application/json", "x-api-key": APIKEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: MODELS[0], max_tokens: 160, system: "Du bist JARVIS, der KI-Assistent von Luis. Er meldet sich gerade an seinem PC an. Begrüße ihn mit 'Sir': höflich, elegant, leicht trockener Humor. Maximal 3 kurze gesprochene Sätze: Begrüßung passend zur Tageszeit, dann das Wichtigste aus dem Lagebild (was heute noch offen ist). Uhrzeiten und Zahlen so, wie ein Mensch sie spricht. Kein Markdown, keine Emojis. Nur der gesprochene Text.",
+        messages: [{ role: "user", content: "Lagebild: " + lagebild() }] })
+    });
+    if (r.ok) { const j = await r.json(); const t = (j.content || []).filter(c => c.type === "text").map(c => c.text).join("").trim(); if (t) return t.slice(0, 500); }
+  } catch {}
+  return fallback;
+}
 async function proactive(topic) {
   let body = topic;
   try {
@@ -200,6 +223,12 @@ const server = http.createServer(async (req, res) => {
       const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {}
       if (!r.ok) return send(res, 502, { error: "Hören: " + t.slice(0, 160) });
       return send(res, 200, { text: String(j.text || "").trim() });
+    }
+    if (url.pathname === "/api/greet" && req.method === "POST") {
+      if (limited("greet:" + dev.id, 10, 600e3)) return send(res, 429, { error: "Kurz Pause." });
+      const text = await greetText(), buf = await ttsBuffer(text);
+      if (!buf) return send(res, 200, { text });
+      res.writeHead(200, { "content-type": "audio/mpeg", "content-length": buf.length, "cache-control": "no-store", "x-jarvis-text": encodeURIComponent(text).slice(0, 2000) }); return res.end(buf);
     }
     if (url.pathname === "/api/tts" && req.method === "POST") {
       if (limited("tts:" + dev.id, 40, 600e3)) return send(res, 429, { error: "Kurz Pause." });
