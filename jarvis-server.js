@@ -97,20 +97,48 @@ function lagebild() {
   for (const k of ["mo", "vm", "nm", "ab"]) for (const x of (slots[k] || [])) if (!sd[x.id]) open.push(x.n);
   return `Tag ${day}/90, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
 }
+const EDGE_BIN = process.env.JARVIS_EDGE || "/opt/jarvis/venv/bin/edge-tts";
+const EDGE_VOICES = [
+  { id: "edge:de-DE-ConradNeural", name: "Conrad (tief, ruhig)" },
+  { id: "edge:de-DE-FlorianMultilingualNeural", name: "Florian (natürlich)" },
+  { id: "edge:de-DE-KillianNeural", name: "Killian (jung)" },
+  { id: "edge:de-AT-JonasNeural", name: "Jonas (Österreich)" }
+];
+const edgeOk = () => { try { fs.accessSync(EDGE_BIN, fs.constants.X_OK); return true; } catch { return false; } };
+const groqKey = () => { try { return rd("groq.key"); } catch { return ""; } };
+const elKey = () => { try { return rd("elevenlabs.key"); } catch { return ""; } };
 function voiceId() {
   try { const v = load("voice", null); if (v && v.id) return v.id; } catch {}
   try { const v = rd("voice.id"); if (v) return v; } catch {}
-  return "onwK4e9ZLuTAKqWW03F9";
+  return EDGE_VOICES[0].id;
 }
-async function ttsBuffer(text) {
-  let key = ""; try { key = rd("elevenlabs.key"); } catch {}
-  if (!key) return null;
-  const voice = voiceId();
-  const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
-    method: "POST", headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
-    body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", apply_text_normalization: "on", voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true } })
+function edgeTts(text, voice) {
+  return new Promise(ok => {
+    if (!edgeOk()) return ok(null);
+    const { spawn } = require("node:child_process");
+    const out = path.join(require("node:os").tmpdir(), "tts-" + crypto.randomBytes(6).toString("hex") + ".mp3");
+    const p = spawn(EDGE_BIN, ["--voice", voice, "--rate=+4%", "--pitch=-4Hz", "--text=" + text, "--write-media", out], { stdio: "ignore", env: { PATH: "/usr/bin:/bin", HOME: require("node:os").tmpdir() } });
+    const t = setTimeout(() => p.kill("SIGKILL"), 25000);
+    p.on("close", code => { clearTimeout(t); let b = null; try { if (code === 0) b = fs.readFileSync(out); } catch {} try { fs.unlinkSync(out); } catch {} ok(b && b.length > 500 ? b : null); });
+    p.on("error", () => { clearTimeout(t); ok(null); });
   });
-  return r.ok ? Buffer.from(await r.arrayBuffer()) : null;
+}
+let elDeadUntil = 0, lastTtsErr = "";
+async function ttsBuffer(text) {
+  const v = voiceId();
+  if (!v.startsWith("edge:") && elKey() && Date.now() > elDeadUntil) {
+    try {
+      const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(v) + "?output_format=mp3_44100_128", {
+        method: "POST", headers: { "xi-api-key": elKey(), "content-type": "application/json", accept: "audio/mpeg" },
+        body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", apply_text_normalization: "on", voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true } })
+      });
+      if (r.ok) return Buffer.from(await r.arrayBuffer());
+      lastTtsErr = (await r.text()).slice(0, 160);
+      if (/quota|credit|limit|payment/i.test(lastTtsErr) || r.status === 401) elDeadUntil = Date.now() + 3600e3; // 1 Std. nicht mehr versuchen
+    } catch (e) { lastTtsErr = String(e.message || e); }
+  }
+  const ev = v.startsWith("edge:") ? v.slice(5) : EDGE_VOICES[0].id.slice(5);
+  return edgeTts(text, ev);
 }
 async function greetText() {
   const b = berlin(), h = +b.hm.slice(0, 2);
@@ -244,41 +272,45 @@ const server = http.createServer(async (req, res) => {
       save("state", { ts: b.ts, data: b.data, by: dev.id }); return send(res, 200, { ok: true, ts: b.ts });
     }
     if (url.pathname === "/api/tts/status" && req.method === "GET") {
-      let ok = false; try { ok = !!rd("elevenlabs.key"); } catch {} return send(res, 200, { ok });
+      return send(res, 200, { ok: edgeOk() || !!elKey(), edge: edgeOk(), eleven: !!elKey() && Date.now() > elDeadUntil, hear: !!(groqKey() || elKey()) });
     }
     if (url.pathname === "/api/pair/new" && req.method === "POST") {
       if (limited("pairnew:" + dev.id, 6, 3600e3)) return send(res, 429, { error: "Zu viele Codes. Später nochmal." });
       return send(res, 200, { code: newPairCode(), exp: 15 });
     }
     if (url.pathname === "/api/voices" && req.method === "GET") {
-      let key = ""; try { key = rd("elevenlabs.key"); } catch {}
-      if (!key) return send(res, 503, { error: "Keine Stimme eingerichtet." });
-      const cur = voiceId();
-      const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": key } });
-      if (!r.ok) return send(res, 200, { current: cur, voices: [], note: "Liste nicht erlaubt (" + r.status + ")" });
-      const j = await r.json();
-      const voices = (j.voices || []).map(v => ({ id: v.voice_id, name: v.name, cat: v.category, lang: (v.labels && (v.labels.language || v.labels.accent)) || "" })).slice(0, 80);
+      const cur = voiceId(); let voices = edgeOk() ? EDGE_VOICES.map(x => ({ ...x, cat: "gratis" })) : [];
+      if (elKey()) { try { const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": elKey() } });
+        if (r.ok) { const j = await r.json(); voices = voices.concat((j.voices || []).map(v => ({ id: v.voice_id, name: v.name + " (ElevenLabs)", cat: v.category })).slice(0, 60)); } } catch {} }
       return send(res, 200, { current: cur, voices });
     }
     if (url.pathname === "/api/voice" && req.method === "PUT") {
       const b = await body(req), id = String((b && b.id) || "").trim();
-      if (!/^[A-Za-z0-9]{10,40}$/.test(id)) return send(res, 400, { error: "Voice-ID ungültig." });
+      if (!/^[A-Za-z0-9]{10,40}$/.test(id) && !EDGE_VOICES.some(x => x.id === id)) return send(res, 400, { error: "Voice-ID ungültig." });
       save("voice", { id, by: dev.id, at: Date.now() }); return send(res, 200, { ok: true, id });
     }
     if (url.pathname === "/api/stt" && req.method === "POST") {
       if (limited("stt:" + dev.id, 60, 600e3)) return send(res, 429, { error: "Kurz Pause." });
-      let key = ""; try { key = rd("elevenlabs.key"); } catch {}
-      if (!key) return send(res, 503, { error: "Keine Stimme eingerichtet." });
       const audio = await new Promise((ok, bad) => { let n = 0; const c = []; req.on("data", d => { n += d.length; if (n > 8 * 1024 * 1024) { bad(new Error("zu groß")); req.destroy(); } else c.push(d); }); req.on("end", () => ok(Buffer.concat(c))); req.on("error", bad); });
       if (audio.length < 1000) return send(res, 200, { text: "" });
       const ct = String(req.headers["content-type"] || "audio/webm").split(";")[0];
-      const fd = new FormData();
-      fd.append("model_id", "scribe_v1"); fd.append("language_code", "deu"); fd.append("tag_audio_events", "false");
-      fd.append("file", new Blob([audio], { type: ct }), "rec." + (ct.includes("mp4") ? "mp4" : ct.includes("ogg") ? "ogg" : "webm"));
-      const r = await fetch("https://api.elevenlabs.io/v1/speech-to-text", { method: "POST", headers: { "xi-api-key": key }, body: fd });
-      const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {}
-      if (!r.ok) return send(res, 502, { error: "Hören: " + t.slice(0, 160) });
-      return send(res, 200, { text: String(j.text || "").trim() });
+      const fname = "rec." + (ct.includes("mp4") ? "mp4" : ct.includes("ogg") ? "ogg" : "webm");
+      let err = "Kein Hör-Dienst eingerichtet.";
+      if (groqKey()) {
+        const fd = new FormData(); fd.append("model", "whisper-large-v3-turbo"); fd.append("language", "de"); fd.append("response_format", "json"); fd.append("temperature", "0");
+        fd.append("file", new Blob([audio], { type: ct }), fname);
+        try { const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", { method: "POST", headers: { authorization: "Bearer " + groqKey() }, body: fd });
+          const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {}
+          if (r.ok) return send(res, 200, { text: String(j.text || "").trim() }); err = "Hören (Groq): " + t.slice(0, 140); } catch (e) { err = "Hören (Groq): " + e.message; }
+      }
+      if (elKey()) {
+        const fd = new FormData(); fd.append("model_id", "scribe_v1"); fd.append("language_code", "deu"); fd.append("tag_audio_events", "false");
+        fd.append("file", new Blob([audio], { type: ct }), fname);
+        try { const r = await fetch("https://api.elevenlabs.io/v1/speech-to-text", { method: "POST", headers: { "xi-api-key": elKey() }, body: fd });
+          const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {}
+          if (r.ok) return send(res, 200, { text: String(j.text || "").trim() }); err = /quota|credit/i.test(t) ? "ElevenLabs-Guthaben leer – Groq-Schlüssel einrichten." : "Hören: " + t.slice(0, 140); } catch (e) { err = "Hören: " + e.message; }
+      }
+      return send(res, 502, { error: err });
     }
     if (url.pathname === "/api/greet" && req.method === "POST") {
       if (limited("greet:" + dev.id, 10, 600e3)) return send(res, 429, { error: "Kurz Pause." });
@@ -287,18 +319,11 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "content-type": "audio/mpeg", "content-length": buf.length, "cache-control": "no-store", "x-jarvis-text": encodeURIComponent(text).slice(0, 2000) }); return res.end(buf);
     }
     if (url.pathname === "/api/tts" && req.method === "POST") {
-      if (limited("tts:" + dev.id, 40, 600e3)) return send(res, 429, { error: "Kurz Pause." });
-      let key = ""; try { key = rd("elevenlabs.key"); } catch {}
-      if (!key) return send(res, 503, { error: "Keine Stimme eingerichtet." });
-      const voice = voiceId();
+      if (limited("tts:" + dev.id, 80, 600e3)) return send(res, 429, { error: "Kurz Pause." });
       const b = await body(req), text = String(b.text || "").replace(/\[[^\]]*\]/g, "").slice(0, 600).trim();
       if (!text) return send(res, 400, { error: "leer" });
-      const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
-        method: "POST", headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
-        body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", apply_text_normalization: "on", voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true } })
-      });
-      if (!r.ok) { const t = await r.text(); return send(res, r.status === 401 ? 502 : r.status, { error: "Stimme: " + t.slice(0, 160) }); }
-      const buf = Buffer.from(await r.arrayBuffer());
+      const buf = await ttsBuffer(text);
+      if (!buf) return send(res, 502, { error: "Stimme: " + (lastTtsErr || "nicht verfügbar") });
       res.writeHead(200, { "content-type": "audio/mpeg", "content-length": buf.length, "cache-control": "no-store" }); return res.end(buf);
     }
     if (url.pathname === "/api/push/key" && req.method === "GET") {
