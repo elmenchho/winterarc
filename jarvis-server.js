@@ -136,6 +136,12 @@ function edgeTts(text, voice) {
   });
 }
 let elDeadUntil = 0, lastTtsErr = "";
+// Erinnert max. 1x pro Tag per Push, wenn ein Guthaben leer ist
+function lowCredit(what, where) {
+  const b = berlin(), k = "credit:" + what + ":" + b.date, sent = load("sent", {});
+  if (sent[k]) return; sent[k] = 1; save("sent", Object.fromEntries(Object.entries(sent).slice(-50)));
+  pushAll({ title: "JARVIS – Guthaben leer", body: "Boss, dein " + what + "-Guthaben ist leer. Bitte aufladen: " + where + ". Ich nutze solange die Ersatzstimme.", tag: "jarvis-credit" }).catch(() => {});
+}
 async function ttsBuffer(text) {
   const v = voiceId();
   if (v.startsWith("openai:") && oaKey()) {
@@ -144,6 +150,7 @@ async function ttsBuffer(text) {
         body: JSON.stringify({ model: "gpt-4o-mini-tts", voice: v.slice(7), input: text, instructions: OA_STYLE, response_format: "mp3" }) });
       if (r.ok) return Buffer.from(await r.arrayBuffer());
       lastTtsErr = "OpenAI: " + (await r.text()).slice(0, 160);
+      if (/insufficient_quota|billing|quota/i.test(lastTtsErr)) lowCredit("OpenAI (Stimme)", "platform.openai.com → Billing");
     } catch (e) { lastTtsErr = "OpenAI: " + (e.message || e); }
   }
   if (!v.startsWith("edge:") && !v.startsWith("openai:") && elKey() && Date.now() > elDeadUntil) {
@@ -380,6 +387,7 @@ const server = http.createServer(async (req, res) => {
         body: JSON.stringify(payload)
       });
       const t = await r.text();
+      if (!r.ok && /credit balance|billing/i.test(t)) lowCredit("Claude (Gehirn)", "console.anthropic.com → Billing");
       res.writeHead(r.status, { "content-type": "application/json", "cache-control": "no-store" }); return res.end(t);
     }
     return send(res, 404, { error: "unbekannt" });
