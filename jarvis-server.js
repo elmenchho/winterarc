@@ -39,10 +39,14 @@ const sha = s => crypto.createHash("sha256").update(s).digest("hex");
 
 // ---------- Geräte & Kopplung ----------
 // Kopplungscode erzeugen:  sudo -u jarvis node /opt/jarvis/jarvis-server.js pair
-if (process.argv[2] === "pair") {
+function newPairCode() {
   const code = Array.from(crypto.randomBytes(5)).map(b => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("") + "-" +
                Array.from(crypto.randomBytes(5)).map(b => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
   const p = load("pair", []); p.push({ h: sha(code), exp: Date.now() + 15 * 60e3 }); save("pair", p.filter(x => x.exp > Date.now()));
+  return code;
+}
+if (process.argv[2] === "pair") {
+  const code = newPairCode();
   console.log("\n  Kopplungscode (15 Min gültig, nur 1x):  " + code + "\n");
   process.exit(0);
 }
@@ -149,6 +153,32 @@ function limited(key, max, winMs) {
 }
 setInterval(() => { const now = Date.now(); for (const [k, a] of hits) if (!a.some(t => now - t < 3600e3)) hits.delete(k); }, 600e3).unref();
 
+// ---------- App ausliefern (holt sich Updates selbst von GitHub) ----------
+const APPSRC = process.env.JARVIS_APPSRC || "https://elmenchho.github.io/winterarc";
+const WWW = path.join(DATA, "www");
+const APPFILES = { "index.html": "text/html; charset=utf-8", "sw.js": "text/javascript; charset=utf-8", "manifest.webmanifest": "application/manifest+json",
+  "icon-192.png": "image/png", "icon-512.png": "image/png", "apple-touch-icon.png": "image/png" };
+async function appSync() {
+  try { fs.mkdirSync(WWW, { recursive: true, mode: 0o755 }); } catch {}
+  for (const f of Object.keys(APPFILES)) {
+    try {
+      const r = await fetch(APPSRC + "/" + f + "?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) continue;
+      const b = Buffer.from(await r.arrayBuffer()); if (!b.length || b.length > 8 * 1024 * 1024) continue;
+      if (f === "index.html" && !/<html/i.test(b.toString("utf8", 0, 4000))) continue;
+      const t = path.join(WWW, f + ".tmp"); fs.writeFileSync(t, b); fs.renameSync(t, path.join(WWW, f));
+    } catch {}
+  }
+}
+appSync(); setInterval(appSync, 10 * 60e3).unref();
+function serveApp(req, res, p) {
+  const f = p === "/" ? "index.html" : p.slice(1);
+  if (!APPFILES[f]) return false;
+  let b; try { b = fs.readFileSync(path.join(WWW, f)); } catch { if (f !== "index.html") return false; b = Buffer.from("<!doctype html><meta charset=utf-8><title>JARVIS</title><p style='font-family:system-ui;padding:40px'>JARVIS startet … in 1 Minute neu laden.</p>"); }
+  res.writeHead(200, { "content-type": APPFILES[f], "cache-control": "no-cache", "x-content-type-options": "nosniff", "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer", "permissions-policy": "microphone=(self), camera=(), geolocation=()" });
+  res.end(req.method === "HEAD" ? undefined : b); return true;
+}
+
 // ---------- HTTP ----------
 function cors(req, res) {
   const o = req.headers.origin;
@@ -186,6 +216,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   try {
     if (url.pathname === "/api/health") return send(res, 200, { ok: true, name: "JARVIS" });
+    if (!url.pathname.startsWith("/api/") && (req.method === "GET" || req.method === "HEAD")) { if (serveApp(req, res, url.pathname)) return; return send(res, 404, { error: "unbekannt" }); }
 
     if (url.pathname === "/api/pair" && req.method === "POST") {
       if (limited("pair:" + ip, 5, 3600e3)) return send(res, 429, { error: "Zu viele Versuche. Später nochmal." });
@@ -209,10 +240,15 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req), cur = load("state", { ts: 0 });
       if (!b || typeof b.ts !== "number" || typeof b.data !== "object") return send(res, 400, { error: "ungültig" });
       if (b.ts < (cur.ts || 0)) return send(res, 409, cur);           // anderes Gerät war neuer
+      if (cur && cur.data) { const h = new Date().toISOString().slice(0, 13); const bk = load("backups", []); if (!bk.length || bk[bk.length - 1].h !== h) { bk.push({ h, ts: cur.ts, data: cur.data }); save("backups", bk.slice(-48)); } }
       save("state", { ts: b.ts, data: b.data, by: dev.id }); return send(res, 200, { ok: true, ts: b.ts });
     }
     if (url.pathname === "/api/tts/status" && req.method === "GET") {
       let ok = false; try { ok = !!rd("elevenlabs.key"); } catch {} return send(res, 200, { ok });
+    }
+    if (url.pathname === "/api/pair/new" && req.method === "POST") {
+      if (limited("pairnew:" + dev.id, 6, 3600e3)) return send(res, 429, { error: "Zu viele Codes. Später nochmal." });
+      return send(res, 200, { code: newPairCode(), exp: 15 });
     }
     if (url.pathname === "/api/voices" && req.method === "GET") {
       let key = ""; try { key = rd("elevenlabs.key"); } catch {}
