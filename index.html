@@ -366,6 +366,22 @@ details.setup .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px
 .jv-row button[aria-pressed="true"]{color:#bfe8ff;border-color:rgba(61,178,255,.6)}
 .jv-talk{border:0;border-radius:999px;padding:13px 22px;font:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(135deg,#1d6fd6,#3db2ff);box-shadow:0 8px 24px -10px rgba(61,178,255,.8)}
 .jv-talk.on{background:linear-gradient(135deg,#c2410c,#ffb020);color:#1a1205;box-shadow:0 8px 24px -10px rgba(255,176,32,.8)}
+#tJarvis{display:none!important}
+.ht-set{display:block;margin:18px auto 0;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline}
+.hometop{display:flex;align-items:center;gap:18px;padding:6px 2px 14px}
+.ht-orb{width:96px;height:96px;flex:none}
+.ht-orb i:nth-child(2){inset:10px}.ht-orb i:nth-child(3){inset:22px}.ht-orb b{inset:32px}
+.ht-r{min-width:0}
+.ht-time{font-family:var(--f-display);font-weight:900;font-size:52px;line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.ht-time small{font-size:22px;color:var(--muted);margin-left:4px}
+.ht-date{font-size:16px;font-weight:700;margin-top:4px}
+.ht-day{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;color:var(--ice-3);text-transform:uppercase;margin-top:4px}
+.daystrip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 14px}
+.daystrip .ds{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--surface)}
+.daystrip .ds b{display:block;font-family:var(--f-display);font-weight:900;font-size:24px;line-height:1}
+.daystrip .ds span{display:block;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-top:6px}
+.daystrip .ds i{display:block;height:4px;border-radius:4px;background:var(--surface-2);margin-top:8px;overflow:hidden}
+.daystrip .ds i em{display:block;height:100%;background:linear-gradient(90deg,var(--ice-3),#7a5cff)}
 .focusbar{position:relative;border-radius:18px;padding:16px 16px 14px;margin:4px 0 14px;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--ice-3) 22%,transparent),transparent 60%),var(--surface);border:1px solid color-mix(in srgb,var(--ice-3) 45%,var(--line));box-shadow:0 0 30px -14px var(--ice-3)}
 .focusbar .fe{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;color:var(--ice-3);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
 .focusbar .fw{font-family:var(--f-display);font-weight:900;font-size:28px;line-height:1.1;margin:6px 0 4px;text-transform:uppercase;letter-spacing:.01em}
@@ -437,7 +453,12 @@ img{max-width:100%}
     <button class="tab jv-tab" role="tab" id="tJarvis" data-p="pJarvis" aria-selected="false">Jarvis</button>
   </div>
   <div class="panel" id="pHeute">
+  <header class="hometop" id="homeTop">
+    <button class="jv-orb ht-orb" id="htOrb" type="button" aria-label="Mit Jarvis reden"><i></i><i></i><i></i><b></b></button>
+    <div class="ht-r"><div class="ht-time" id="htTime">--:--</div><div class="ht-date" id="htDate"></div><div class="ht-day" id="htDay"></div></div>
+  </header>
   <section class="focusbar" id="focusBar" aria-live="polite"></section>
+  <section class="daystrip" id="dayStrip"></section>
   <header class="hero">
     <div>
       <div class="eyebrow">Winter Arc · 07.10.2026 – 07.07.2027</div>
@@ -1004,21 +1025,27 @@ img{max-width:100%}
   function renderFocus(){
     const el=$("focusBar"), isToday=sel===todayIdx(), P=$("pHeute");
     if(!isToday){ el.hidden=true; P.classList.remove("clean"); return; } el.hidden=false;
+    { const d=todayIdx(), dd=state.days[d]||{}, h=dd.h||{}, hn=HABITS.filter(x=>h[x.id]).length, ft=foodTotals(d), g=state.settings, gs=goalSaved();
+      const bar=v=>'<i><em style="width:'+Math.max(0,Math.min(100,Math.round(v*100)))+'%"></em></i>';
+      $("dayStrip").innerHTML='<div class="ds"><b>'+hn+'/'+HABITS.length+'</b><span>Haken</span>'+bar(hn/HABITS.length)+'</div>'+
+        '<div class="ds"><b>'+Math.round(ft.p)+' g</b><span>Eiweiß</span>'+bar(ft.p/(g.protein||160))+'</div>'+
+        '<div class="ds"><b>'+(gs>=1000?(gs/1000).toFixed(1).replace(".",",")+'k':gs)+' €</b><span>Urus</span>'+bar(gs/(state.goal.target||200000))+'</div>'; }
     const f=curFocus(), cs=SLOTS.find(s=>s[0]===curSlot()), hm=x=>new Date(x).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
     let html="";
     if(f){ const F=FOCUS[f.k]||FOCUS.frei, title=f.k==="gym"?"Gym · "+WORKOUTS[rot(sel)].name:(f.what||F.l);
       html='<div class="fe"><span>Jetzt</span><span>seit '+hm(f.at)+'</span></div><div class="fw">'+F.ic+' '+esc(title)+'</div>'+(f.what&&f.k!=="frei"&&f.k!=="gym"?'<div class="fs">'+esc(F.l)+'</div>':'')+
         '<div class="fb"><button class="pri" data-fa="done" type="button">✓ Fertig</button><button data-fa="switch" type="button">Wechseln</button></div>';
     } else { const n=nextItem();
-      html='<div class="fe"><span>Jetzt · '+cs[1]+'</span><span>'+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+'</span></div>'+
+      html='<div class="fe"><span>Jetzt · '+cs[1]+'</span></div>'+
         (n?'<div class="fs">Als Nächstes'+(n.slot!==cs[1]?' ('+n.slot+')':'')+'</div><div class="fw">'+esc(planLabel(n.it.n))+'</div><div class="fb"><button class="pri" data-fa="start" data-sid="'+esc(n.it.id)+'" type="button">▶ Starten</button><button data-fa="tick" data-sid="'+esc(n.it.id)+'" type="button">✓ Schon erledigt</button><button data-fa="switch" type="button">Was anderes</button></div>'
           :'<div class="fw">Alles erledigt 💪</div><div class="fs">Sag Jarvis, was du jetzt machst.</div>');
     }
     if(el._sw) html+='<div class="fk">'+Object.keys(FOCUS).map(k=>'<button data-fk="'+k+'" type="button">'+FOCUS[k].ic+' '+FOCUS[k].l+'</button>').join("")+'</div>';
     html+='<button class="fall" data-fa="all" type="button">'+(showAll?"Weniger zeigen":"Alles zeigen")+'</button>';
+    if(showAll) html+='<button class="ht-set" data-fa="jvset" type="button">⚙ Jarvis-Einstellungen (Push, Geräte, Verbindung)</button>';
     el.innerHTML=html;
     // aufräumen: nur zeigen, was gerade gebraucht wird
-    const keep=new Set(["focusBar"].concat(f?(FOCUS[f.k]||FOCUS.frei).show:["plan","todoCard"]));
+    const keep=new Set(["homeTop","focusBar","dayStrip"].concat(f?(FOCUS[f.k]||FOCUS.frei).show:[]));
     [...P.children].forEach(c=>c.classList.toggle("fhide",!keep.has(c.id)));
     P.classList.toggle("clean",!showAll);
   }
@@ -1026,6 +1053,7 @@ img{max-width:100%}
     if(b.dataset.fk){ el._sw=false; setFocus(b.dataset.fk,""); return; }
     const a=b.dataset.fa;
     if(a==="all"){ showAll=!showAll; renderFocus(); return; }
+    if(a==="jvset"){ $("tJarvis").click(); return; }
     if(a==="switch"){ el._sw=!el._sw; renderFocus(); return; }
     if(a==="done"){ finishFocus(); return; }
     const d=todayIdx(), S=daySlots(d); let it=null; for(const k in S)(S[k]||[]).forEach(x=>{ if(x.id===b.dataset.sid) it=x; });
@@ -1033,6 +1061,19 @@ img{max-width:100%}
     if(a==="start"&&it){ setFocus(guessKind(it.n),planLabel(it.n),it.id); }
   });
   setInterval(()=>{ if(!document.hidden&&$("focusBar")) renderFocus(); },60e3);
+  function tickClock(){ const n=new Date(), t=$("htTime"); if(!t) return;
+    t.innerHTML=String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0")+'<small>'+String(n.getSeconds()).padStart(2,"0")+'</small>';
+    $("htDate").textContent=WD[n.getDay()]+", "+n.getDate()+". "+MO[n.getMonth()]+" "+n.getFullYear();
+    const ti=todayIdx(), tk=$("jvTalk"); if(!(tk&&tk.classList.contains("on"))) $("htDay").textContent=ti>=1&&ti<=TOTAL?"Tag "+ti+" von "+TOTAL:""; }
+  tickClock(); setInterval(tickClock,1000);
+  // Blase auf der Startseite = Jarvis direkt hier (kein Tab-Wechsel)
+  $("htOrb").onclick=()=>{ const off=$("jvOff"); if(off&&!off.hidden){ $("tJarvis").click(); return; } const b=$("jvTalk"); if(b) b.click(); };
+  try{ const jo=$("jvOrb"), js=$("jvSt"), ho=$("htOrb");
+    const sync=()=>{ ["busy","listen","speak"].forEach(c=>ho.classList.toggle(c,jo.classList.contains(c))); const on=$("jvTalk").classList.contains("on"); ho.classList.toggle("on",on);
+      $("htDay").textContent=on||jo.classList.contains("busy")||jo.classList.contains("speak")?js.textContent:(todayIdx()>=1&&todayIdx()<=TOTAL?"Tag "+todayIdx()+" von "+TOTAL:""); };
+    new MutationObserver(sync).observe(jo,{attributes:true,attributeFilter:["class"]});
+    new MutationObserver(sync).observe(js,{childList:true,characterData:true,subtree:true});
+    new MutationObserver(sync).observe($("jvTalk"),{attributes:true,attributeFilter:["class"]}); }catch(e){}
 
   function render(){
     const ti=todayIdx(), tc=clamp(ti);
