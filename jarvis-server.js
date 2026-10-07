@@ -93,10 +93,15 @@ function lagebild() {
   for (const k of ["mo", "vm", "nm", "ab"]) for (const x of (slots[k] || [])) if (!sd[x.id]) open.push(x.n);
   return `Tag ${day}/90, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
 }
+function voiceId() {
+  try { const v = load("voice", null); if (v && v.id) return v.id; } catch {}
+  try { const v = rd("voice.id"); if (v) return v; } catch {}
+  return "onwK4e9ZLuTAKqWW03F9";
+}
 async function ttsBuffer(text) {
   let key = ""; try { key = rd("elevenlabs.key"); } catch {}
   if (!key) return null;
-  let voice = "onwK4e9ZLuTAKqWW03F9"; try { voice = rd("voice.id") || voice; } catch {}
+  const voice = voiceId();
   const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
     method: "POST", headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
     body: JSON.stringify({ text, model_id: "eleven_multilingual_v2", apply_text_normalization: "on", voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0, use_speaker_boost: true } })
@@ -209,6 +214,21 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/tts/status" && req.method === "GET") {
       let ok = false; try { ok = !!rd("elevenlabs.key"); } catch {} return send(res, 200, { ok });
     }
+    if (url.pathname === "/api/voices" && req.method === "GET") {
+      let key = ""; try { key = rd("elevenlabs.key"); } catch {}
+      if (!key) return send(res, 503, { error: "Keine Stimme eingerichtet." });
+      const cur = voiceId();
+      const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": key } });
+      if (!r.ok) return send(res, 200, { current: cur, voices: [], note: "Liste nicht erlaubt (" + r.status + ")" });
+      const j = await r.json();
+      const voices = (j.voices || []).map(v => ({ id: v.voice_id, name: v.name, cat: v.category, lang: (v.labels && (v.labels.language || v.labels.accent)) || "" })).slice(0, 80);
+      return send(res, 200, { current: cur, voices });
+    }
+    if (url.pathname === "/api/voice" && req.method === "PUT") {
+      const b = await body(req), id = String((b && b.id) || "").trim();
+      if (!/^[A-Za-z0-9]{10,40}$/.test(id)) return send(res, 400, { error: "Voice-ID ungültig." });
+      save("voice", { id, by: dev.id, at: Date.now() }); return send(res, 200, { ok: true, id });
+    }
     if (url.pathname === "/api/stt" && req.method === "POST") {
       if (limited("stt:" + dev.id, 60, 600e3)) return send(res, 429, { error: "Kurz Pause." });
       let key = ""; try { key = rd("elevenlabs.key"); } catch {}
@@ -234,7 +254,7 @@ const server = http.createServer(async (req, res) => {
       if (limited("tts:" + dev.id, 40, 600e3)) return send(res, 429, { error: "Kurz Pause." });
       let key = ""; try { key = rd("elevenlabs.key"); } catch {}
       if (!key) return send(res, 503, { error: "Keine Stimme eingerichtet." });
-      let voice = "onwK4e9ZLuTAKqWW03F9"; try { voice = rd("voice.id") || voice; } catch {}
+      const voice = voiceId();
       const b = await body(req), text = String(b.text || "").replace(/\[[^\]]*\]/g, "").slice(0, 600).trim();
       if (!text) return send(res, 400, { error: "leer" });
       const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
