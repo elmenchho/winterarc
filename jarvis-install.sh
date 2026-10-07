@@ -92,12 +92,7 @@ $HOST {
 		Referrer-Policy no-referrer
 		-Server
 	}
-	handle /api/* {
-		reverse_proxy 127.0.0.1:8787
-	}
-	handle {
-		respond "JARVIS" 200
-	}
+	reverse_proxy 127.0.0.1:8787
 }
 CADDY
 ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
