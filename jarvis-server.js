@@ -113,7 +113,7 @@ const OA_VOICES = [
   { id: "openai:ballad", name: "Ballad (sanft)" },
   { id: "openai:echo", name: "Echo (neutral)" }
 ];
-const OA_STYLE = "Sprich ausschließlich Deutsch, akzentfreies Hochdeutsch. Du bist JARVIS, ein eleganter, souveräner KI-Butler: ruhige, tiefe, selbstbewusste Stimme, gleichmäßiges Tempo, klare Aussprache, ein Hauch trockener Humor. Nicht übertrieben, nicht roboterhaft, keine Pausen-Füller.";
+const OA_STYLE = "Sprache: ausschließlich Deutsch, akzentfreies, sehr deutliches Hochdeutsch.\nCharakter: JARVIS – eine hochintelligente, loyale KI wie ein eleganter britischer Butler. Souverän, kultiviert, ruhig, mit feinem, trockenem Humor und einem leichten Lächeln in der Stimme.\nStimme: tief, warm, sonor, nah am Mikrofon, wie ein Sprecher in einem Hollywood-Film.\nBetonung: lebendig und menschlich, natürliche Satzmelodie, wichtige Wörter leicht betonen, keine monotone Vorlesestimme.\nTempo: zügig und flüssig, kurze natürliche Pausen nur an Satzenden.\nGefühl: respektvoll, motivierend, selbstbewusst – nie hektisch, nie roboterhaft.";
 const groqKey = () => { try { return rd("groq.key"); } catch { return ""; } };
 const elKey = () => { try { return rd("elevenlabs.key"); } catch { return ""; } };
 function voiceId() {
