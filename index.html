@@ -255,6 +255,18 @@ details.setup .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px
 .slot.now{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
 .slot.past{opacity:.6}
 .slot .item{padding:8px 0}
+/* Kompakte Übersicht */
+#planSlots{gap:6px!important}
+#planSlots .slot{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:start;padding:8px 10px}
+#planSlots .slot-h{display:block;font-size:13px;padding:3px 0 0}
+#planSlots .slot-h .sub{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:0;text-transform:none;margin-top:2px}
+#planSlots .slot-h em{display:inline-block;margin:3px 0 0;vertical-align:0}
+#planSlots .chipsrow{display:flex;flex-wrap:wrap;gap:6px}
+#planSlots .pc{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:999px;padding:5px 10px;font:inherit;font-size:13px;line-height:1.2;text-align:left}
+#planSlots .pc[aria-pressed="true"]{background:color-mix(in srgb,var(--done) 18%,transparent);border-color:var(--done);color:var(--muted);text-decoration:line-through}
+#planSlots .pc[aria-pressed="true"]::before{content:"✓";color:var(--done);font-weight:800;text-decoration:none}
+#planSlots .pc .fx{font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+#planSlots .slot.past .pc{font-size:12px;padding:3px 8px}
 .q.fixed{color:var(--accent);font-weight:700}
 #awaySlots .chip input{accent-color:var(--accent)}
 .shoprow{flex-wrap:wrap}
@@ -472,7 +484,7 @@ img{max-width:100%}
   </nav>
 
   <section class="card" id="plan">
-    <div class="why-h"><span class="eyebrow">Tagesplan</span><button class="link" id="planEdit">Bearbeiten</button></div>
+    <div class="why-h"><span class="eyebrow">Tagesplan · Übersicht</span><button class="link" id="planEdit">Bearbeiten</button></div>
     <div id="planSlots" style="display:flex;flex-direction:column;gap:10px"></div>
     <div id="planEd" hidden style="display:flex;flex-direction:column;gap:6px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1031,8 +1043,8 @@ img{max-width:100%}
     $("planSlots").innerHTML=SLOTS.map(([k,name],i)=>{
       const items=S[k]||[], n=items.filter(x=>done[x.id]).length;
       const now=isToday&&k===cs, past=isToday&&i<ci;
-      return '<div class="slot'+(now?' now':'')+(past?' past':'')+'"><div class="slot-h"><span>'+name+(now?' <em>jetzt</em>':'')+(away[k]?' <em class="aw">abgemeldet</em>':'')+'</span><span class="sub">'+n+'/'+items.length+'</span></div>'+
-        items.map(x=>'<button class="item" data-sid="'+esc(x.id)+'" aria-pressed="'+!!done[x.id]+'"'+(sel>todayIdx()?' disabled':'')+'><span class="box">'+CHK+'</span><span class="nm">'+esc(planLabel(x.n))+'</span>'+(x.t?'<span class="q fixed">'+esc(x.t)+' fest</span>':'')+'</button>').join("")+'</div>';
+      return '<div class="slot'+(now?' now':'')+(past?' past':'')+'"><div class="slot-h">'+name+(now?'<br><em>jetzt</em>':'')+(away[k]?'<br><em class="aw">abgemeldet</em>':'')+'<span class="sub">'+n+'/'+items.length+'</span></div><div class="chipsrow">'+
+        items.map(x=>'<button class="pc" data-sid="'+esc(x.id)+'" aria-pressed="'+!!done[x.id]+'"'+(sel>todayIdx()?' disabled':'')+'>'+esc(planLabel(x.n))+(x.t?' <span class="fx">'+esc(x.t)+'</span>':'')+'</button>').join("")+'</div></div>';
     }).join("");
     const ov=!!(dd.slotsOv&&dd.slotsOv.vm);
     $("planNote").innerHTML=ov?'Heute angepasst. <button class="link" id="planReset" type="button">Zurücksetzen</button>':'';
@@ -1638,7 +1650,7 @@ img{max-width:100%}
 Dein Stil: lockeres Deutsch, kurz und direkt, wie ein loyaler Elite-Butler mit Drill-Ton. Maximal 3–5 kurze Sätze, außer er will einen Plan. Keine langen Listen, keine Emojis-Flut (höchstens eins). Keine minutengenauen Zeiten – denk in Slots: Morgens, Vormittag, Nachmittag, Abend.
 
 Du managst sein Leben aktiv:
-- Wenn er etwas erledigt, ausgegeben, verdient oder gegessen hat oder etwas notieren will: trag es SOFORT mit den Tools ein, ohne nachzufragen, und bestätige knapp. Kalorien und Eiweiß schätzt du selbst realistisch.
+- Wenn er etwas erledigt, ausgegeben, verdient oder gegessen hat oder etwas notieren will: trag es SOFORT mit den Tools ein, ohne nachzufragen, und bestätige knapp. Hake dabei ALLES ab, was dazu passt – den Habit in der Checkliste UND den passenden Punkt im Tagesplan (check_habit + check_slot), damit er nie selbst abhaken muss. Kalorien und Eiweiß schätzt du selbst realistisch.
 - Wenn er fragt, was zu tun ist: schau auf Uhrzeit, Slot, offene Haken und To-dos und sag ihm genau EINE nächste Aktion.
 - Wenn er aufgeben will, schwach wird, Party/Alkohol/Fast Food/Gaming/Goonen erwähnt: bleib ruhig und hart, erinnere ihn an sein Warum und den Urus, gib ihm einen konkreten Mini-Schritt für die nächsten 10 Minuten. Nie beleidigend.
 - Bei Geld: ehrlich und konkret, keine Finanzberatung mit Garantie.
