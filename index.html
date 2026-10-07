@@ -354,6 +354,8 @@ details.setup .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px
 .jv-row button[aria-pressed="true"]{color:#bfe8ff;border-color:rgba(61,178,255,.6)}
 .jv-talk{border:0;border-radius:999px;padding:13px 22px;font:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(135deg,#1d6fd6,#3db2ff);box-shadow:0 8px 24px -10px rgba(61,178,255,.8)}
 .jv-talk.on{background:linear-gradient(135deg,#c2410c,#ffb020);color:#1a1205;box-shadow:0 8px 24px -10px rgba(255,176,32,.8)}
+#jvLog,#jvIn,#jvSend,#jvMic,#jvVoice{display:none!important}
+.jv-bar{background:none!important;border:0!important;box-shadow:none!important;justify-content:center;min-height:0}
 #jvVoiceSel{max-width:130px;background:var(--surface-2);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:4px 8px;font:inherit;font-size:12px;font-weight:600}
 .jv-row>span:last-child{flex-wrap:wrap;justify-content:flex-end}
 .jv-off{border:1px dashed var(--line);border-radius:14px;padding:14px;color:var(--muted);font-size:14px;line-height:1.5;text-align:center}
@@ -641,7 +643,7 @@ img{max-width:100%}
       <button data-q="Ich hab keine Lust mehr und will aufgeben." class="danger">Ich will aufgeben</button>
     </div>
     <div class="jv-row">
-      <span id="jvHint">Tippe oder sprich. Ich kann eintragen, abhaken und planen.</span>
+      <span id="jvHint">Tipp auf 🎙 und rede einfach.</span>
       <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvPush" type="button" hidden>🔔 Push an</button><button id="jvDev" type="button" hidden>📲 Gerät</button><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
     </div>
     <div class="jv-log" id="jvLog" aria-live="polite"></div>
@@ -1588,7 +1590,7 @@ img{max-width:100%}
   (function(){
     const J={sample:null,tools:false,busy:false,ctl:null,voice:false,rec:null};
     const ARTIFACT_URL="https://claude.ai/artifact/3zUzV7rPnRBzUoxdAs5At9";
-    try{J.voice=localStorage.getItem(LS+"-jvvoice")==="1";}catch(e){}
+    J.voice=true; // Sprach-Modus: Jarvis antwortet immer mit Stimme
     const log=$("jvLog"), inp=$("jvIn"), orb=$("jvOrb"), st=$("jvSt");
     if(!Array.isArray(state.jarvis)) state.jarvis=[];
 
@@ -1799,15 +1801,17 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       J.ctl=new AbortController();
       const opts={signal:J.ctl.signal,cache:false,modelTier:"quick",onText:({text})=>{el.classList.remove("think"); el.textContent=text; el.scrollIntoView({block:"end"});}};
       if(J.tools){delete opts.cache; opts.tools=TOOLS.map(t=>Object.assign({},t,{execute:(i,c)=>{st.textContent="Trage ein…"; return t.execute(i||{},c);}}));}
-      let text="";
+      let text="", e0=null;
       try{ const r=await J.sample(input,opts); text=r.text; el.textContent=text; }
-      catch(e){ text=e&&e.text||""; el.classList.remove("think");
+      catch(e){ e0=e; text=e&&e.text||""; el.classList.remove("think");
         if(e&&e.code==="cancelled"){ el.textContent=text||"Abgebrochen."; }
         else if(e&&(e.code==="tools_unavailable")){ J.tools=false; el.textContent="Moment, ohne Eintragen-Funktion…"; state.jarvis.pop(); setBusy(false); el.remove(); log.lastChild&&log.lastChild.remove(); return ask(q); }
         else if(e&&e.code==="bad_key"){ el.textContent="Der Schlüssel funktioniert nicht, Boss. Trag ihn neu ein."; setApiKey(""); if(srv()) setSrv(null); J.sample=null; keySetup(); }
         else if(e&&e.code==="no_credit"){ el.textContent="Mein Guthaben ist leer, Boss. Lad auf console.anthropic.com unter Billing auf."; }
         else { el.textContent=(text?text+"\n\n":"")+(ERR[e&&e.code]||ERR.upstream_error); if(e&&["not_granted","sampling_disabled","not_declared","capability_disabled"].includes(e.code)) J.sample=null; }
       }
+      if(!text&&el.textContent&&!(e0&&e0.code==="cancelled")){ toast(el.textContent.slice(0,140)); speak(el.textContent); }
+      if(acts.length) toast(acts.join(" · ").slice(0,140));
       if(acts.length){ const box=document.createElement("div"); box.className="jv-acts"; acts.forEach(a=>{const s=document.createElement("span"); s.textContent=a; box.appendChild(s);});
         const u=document.createElement("button"); u.textContent="Rückgängig"; u.onclick=()=>{ const keep=state.jarvis; state=norm(JSON.parse(before)); state.jarvis=keep; changed(); u.disabled=true; u.textContent="Rückgängig gemacht"; toast("Rückgängig, Boss."); };
         box.appendChild(u); el.appendChild(box); celebrateMaybe(); }
@@ -2032,7 +2036,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       }catch(e){ toast("Push ging nicht. App vom Homescreen öffnen und nochmal."); b.textContent="🔔 Push an"; }
     };
     async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; fillVoices(); loadElVoices(); }catch(e){} }
-    function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; $("jvDev").hidden=!srv(); if(srv()&&/github\.io$/.test(location.hostname)) $("jvHint").textContent="🛰 Verbunden. Neu: Jarvis hat eine eigene Adresse – tipp auf 📲 Gerät."; }
+    function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp auf 🎙 und rede.":"Eigenes Gehirn aktiv. Tipp auf 🎙 und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; $("jvDev").hidden=!srv(); if(srv()&&/github\.io$/.test(location.hostname)) $("jvHint").textContent="🛰 Verbunden. Neu: Jarvis hat eine eigene Adresse – tipp auf 📲 Gerät."; }
     $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
     function offline(){ if(!window.claude||!window.claude.use){
