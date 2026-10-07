@@ -6,6 +6,14 @@ if [ "${1:-}" = "setvoice" ]; then
   printf '%s' "$2" > /etc/jarvis/voice.id; chown root:jarvis /etc/jarvis/voice.id; chmod 640 /etc/jarvis/voice.id
   echo "   ✅ Stimme gewechselt. JARVIS-STIMME FERTIG"; exit 0
 fi
+if [ "${1:-}" = "groq" ]; then
+  echo ">> Groq-Schlüssel einfügen (gsk_…). Man sieht beim Tippen NICHTS – das ist Absicht."
+  read -rsp "   Schlüssel: " K </dev/tty; echo
+  case "$K" in gsk_*) ;; *) echo "   Das sieht nicht wie ein Groq-Schlüssel aus (gsk_…). Abbruch."; exit 1;; esac
+  printf '%s' "$K" > /etc/jarvis/groq.key; unset K
+  chown root:jarvis /etc/jarvis/groq.key; chmod 640 /etc/jarvis/groq.key
+  echo "   ✅ Hören eingerichtet. JARVIS-OHREN FERTIG"; exit 0
+fi
 if [ "${1:-}" = "voice" ]; then
   echo ">> ElevenLabs-Schlüssel einfügen. Man sieht beim Tippen NICHTS – das ist Absicht."
   read -rsp "   Schlüssel: " K </dev/tty; echo
@@ -22,7 +30,7 @@ HOST="${JARVIS_HOST:-${IP//./-}.sslip.io}"
 
 echo ">> Pakete installieren (Node.js, Caddy) …"
 apt-get update -qq
-apt-get install -y -qq nodejs npm caddy curl >/dev/null
+apt-get install -y -qq nodejs npm caddy curl python3-venv >/dev/null
 node -e 'const v=+process.versions.node.split(".")[0]; if(v<20){console.error("Node zu alt: "+process.version); process.exit(1)}'
 
 echo ">> Benutzer & Ordner …"
@@ -32,6 +40,9 @@ install -d -m 750 -o root -g jarvis /etc/jarvis
 install -d -m 755 /opt/jarvis
 curl -fsSL "$SRC/jarvis-server.js" -o /opt/jarvis/jarvis-server.js
 chmod 644 /opt/jarvis/jarvis-server.js
+echo ">> Gratis-Stimme (Microsoft Neural) …"
+[ -x /opt/jarvis/venv/bin/edge-tts ] || python3 -m venv /opt/jarvis/venv
+/opt/jarvis/venv/bin/pip install -q --upgrade edge-tts >/dev/null 2>&1 || echo "   ⚠️  Stimme konnte nicht installiert werden"
 echo ">> Push-Modul …"
 ( cd /opt/jarvis && [ -d node_modules/web-push ] || npm install --silent --no-audit --no-fund web-push@3 >/dev/null )
 
