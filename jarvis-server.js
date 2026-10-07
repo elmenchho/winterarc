@@ -88,14 +88,14 @@ function berlin() {
 }
 function lagebild() {
   const st = load("state", null), S = st && st.data; if (!S) return "Keine Daten.";
-  const b = berlin(), day = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(2026, 9, 1)) / 864e5) + 1;
+  const b = berlin(), day = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(2026, 9, 7)) / 864e5) + 1;
   const dd = (S.days || {})[day] || {}, h = dd.h || {};
   const done = Object.keys(h).filter(k => h[k]);
   const todos = (S.todos || []).filter(t => !t.done).slice(0, 5).map(t => t.t);
   const food = (dd.food || []).reduce((a, x) => a + (+x.k || 0), 0), prot = (dd.food || []).reduce((a, x) => a + (+x.p || 0), 0);
   const sd = dd.sd || {}, slots = S.slots || {}, open = [];
   for (const k of ["mo", "vm", "nm", "ab"]) for (const x of (slots[k] || [])) if (!sd[x.id]) open.push(x.n);
-  return `Tag ${day}/90, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
+  return `Tag ${day}/274, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
 }
 const EDGE_BIN = process.env.JARVIS_EDGE || "/opt/jarvis/venv/bin/edge-tts";
 const EDGE_VOICES = [
