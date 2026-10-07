@@ -860,7 +860,8 @@ img{max-width:100%}
   function norm(s){
     s.days=s.days||{}; s.why=s.why||{};
     s.settings=Object.assign({kcal:2800,protein:160,foodWeek:50},s.settings||{});
-    if(!Array.isArray(s.supps)) s.supps=[{id:"crea",n:"Kreatin",d:"5 g",t:"Morgens"}];
+    if(!Array.isArray(s.supps)) s.supps=[{id:"crea",n:"Kreatin",d:"4 g",t:"Morgens"}];
+    if(!s.creaV4){ s.creaV4=1; s.supps.forEach(x=>{ if(/kreatin/i.test(x.n||"")) x.d="4 g"; }); }
     s.money=Object.assign({income:null,fixed:[],tx:[],debts:[]},s.money||{}); if(!Array.isArray(s.money.debts)) s.money.debts=[];
     if(!Array.isArray(s.schedule)||s.schedVer!==2){ s.schedVer=2; s.schedule=[
       {t:"07:00",n:"Aufstehen, Wasser, Bett machen – kein Handy"},
