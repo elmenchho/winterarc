@@ -1703,16 +1703,26 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking){ if(REC.stream) earListen(); else listen(true); } },400); }
     const AUD=new Audio(); AUD.preload="auto"; let premium=false, audUnlocked=false;
     function premiumOn(){ try{ return premium&&localStorage.getItem(LS+"-jvvoicename")!=="__device"&&!(localStorage.getItem(LS+"-jvvoicename")||"").length; }catch(e){ return premium; } }
+    let speakGen=0;
+    function chunks(t){ const out=[]; let cur=""; (t.match(/[^.!?;:]+[.!?;:]*\s*/g)||[t]).forEach(p=>{ if((cur+p).length>230&&cur){ out.push(cur.trim()); cur=""; } cur+=p; }); if(cur.trim()) out.push(cur.trim()); return out; }
+    async function ttsBlob(S,text){ const r=await fetch(S.url+"/api/tts",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({text})}); if(!r.ok) throw new Error("tts "+r.status); return URL.createObjectURL(await r.blob()); }
+    function playUrl(url){ return new Promise((res,rej)=>{ AUD.onended=()=>{URL.revokeObjectURL(url);res();}; AUD.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("play"));}; AUD.src=url; AUD.play().catch(rej); }); }
     async function speakPremium(text){
       const S=srv(); if(!S) return false;
-      try{
-        const r=await fetch(S.url+"/api/tts",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({text})});
-        if(!r.ok) return false;
-        const url=URL.createObjectURL(await r.blob());
-        J.speaking=true; orb.classList.add("speak"); st.textContent="Jarvis spricht…";
-        AUD.onended=AUD.onerror=()=>{ URL.revokeObjectURL(url); speakDone(); };
-        AUD.src=url; await AUD.play(); return true;
-      }catch(e){ J.speaking=false; orb.classList.remove("speak"); return false; }
+      const parts=chunks(text), gen=++speakGen;
+      let next; try{ next=ttsBlob(S,parts[0]); await next.then(u=>{ next=Promise.resolve(u); }); }catch(e){ return false; }
+      J.speaking=true; orb.classList.add("speak"); st.textContent="Jarvis spricht…";
+      (async()=>{
+        for(let i=0;i<parts.length;i++){
+          if(gen!==speakGen) return;
+          let url; try{ url=await next; }catch(e){ break; }
+          next=i+1<parts.length?ttsBlob(S,parts[i+1]):null; if(next) next.catch(()=>{});
+          if(gen!==speakGen){ URL.revokeObjectURL(url); return; }
+          try{ await playUrl(url); }catch(e){ break; }
+        }
+        if(gen===speakGen) speakDone();
+      })();
+      return true;
     }
     const MONS=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
     function sayable(t){
@@ -1752,7 +1762,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function unlockAudio(){ if(audUnlocked) return; try{ AUD.muted=true; AUD.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; AUD.play().then(()=>{AUD.pause(); AUD.muted=false; audUnlocked=true;}).catch(()=>{AUD.muted=false;}); }catch(e){} }
     function unlockTTS(){ unlockAudio(); try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
     function setVoiceBtn(){const b=$("jvVoice"); b.setAttribute("aria-pressed",String(J.voice)); b.textContent=J.voice?"🔊 An":"🔈 Aus";}
-    $("jvVoice").onclick=()=>{unlockAudio(); J.voice=!J.voice; try{localStorage.setItem(LS+"-jvvoice",J.voice?"1":"0");}catch(e){} setVoiceBtn(); if(J.voice) speak("Stimme aktiv, Boss."); else try{speechSynthesis.cancel();}catch(e){}};
+    $("jvVoice").onclick=()=>{unlockAudio(); J.voice=!J.voice; try{localStorage.setItem(LS+"-jvvoice",J.voice?"1":"0");}catch(e){} setVoiceBtn(); if(J.voice) speak("Stimme aktiv, Boss."); else try{speechSynthesis.cancel(); speakGen++; AUD.pause();}catch(e){}};
     setVoiceBtn();
 
     const ERR={not_granted:"Du hast mir den Zugriff nicht erlaubt. Lad die Seite neu und erlaub Jarvis.",sampling_disabled:"Claude ist für dein Konto gerade nicht verfügbar.",rate_limited:"Kurz Pause, Boss – zu viele Anfragen oder dein Limit ist erreicht. Gleich nochmal.",session_expired:"Bitte bei Claude neu einloggen.",refused:"Dazu sag ich nichts. Frag anders.",upstream_error:"Verbindung gestört. Nochmal senden.",prompt_too_large:"Zu viel auf einmal. Tipp auf „Neu“ und frag nochmal.",empty_completion:"Hab nichts rausbekommen. Frag nochmal anders."};
@@ -1760,7 +1770,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     async function ask(q){
       q=String(q||"").trim(); if(!q||J.busy) return;
       if(!J.sample){ offline(); return; }
-      try{speechSynthesis.cancel();}catch(e){}
+      try{speechSynthesis.cancel(); speakGen++; AUD.pause();}catch(e){}
       try{J.rec&&J.rec.abort();}catch(e){} J.rec=null; clearTimeout(dTimer); dbuf="";
       bubble("u",q); inp.value=""; grow();
       state.jarvis.push({role:"user",content:q});
@@ -1812,7 +1822,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       if(on&&!J.busy&&!J.speaking) st.textContent="Ich höre, Boss… sprich einfach.";
       else if(!on&&!J.busy&&!J.speaking) st.textContent="Online. Bereit, Boss.";
     }
-    function stopTalk(msg){ try{earStop();}catch(e){} J.talk=false; clearTimeout(dTimer); dbuf=""; try{J.dict&&J.dict.stop();}catch(e){} try{J.rec&&J.rec.abort();}catch(e){} J.rec=null; try{speechSynthesis.cancel();}catch(e){} J.speaking=false; orb.classList.remove("speak"); talkUI(); if(msg) st.textContent=msg; }
+    function stopTalk(msg){ try{earStop();}catch(e){} J.talk=false; clearTimeout(dTimer); dbuf=""; try{J.dict&&J.dict.stop();}catch(e){} try{J.rec&&J.rec.abort();}catch(e){} J.rec=null; try{speechSynthesis.cancel(); speakGen++; AUD.pause();}catch(e){} J.speaking=false; orb.classList.remove("speak"); talkUI(); if(msg) st.textContent=msg; }
     function heard(text){ // settled words while talking
       if(!J.talk||J.busy||J.speaking||Date.now()<(J.quietUntil||0)) return;
       dbuf=(dbuf+text).replace(/^\s+/,""); inp.value=dbuf; grow();
