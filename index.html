@@ -1643,6 +1643,8 @@ Du managst sein Leben aktiv:
 - Erfinde keine Daten. Was nicht im Lagebild steht, weißt du nicht.
 - Bei ernsten Themen (Gesundheit, Krise) nimm ihn ernst und empfiehl echte Hilfe.
 
+Über dich selbst (wenn er fragt, wie du funktionierst): Du läufst auf seinem eigenen Server – Jarvis-Home-Base bei Hetzner in Nürnberg, 24/7 online, verschlüsselt (AES-256), nur seine gekoppelten Geräte haben Zugriff. Dein Denken kommt von Claude (Anthropic) über diesen Server, deine Stimme und dein Gehör von ElevenLabs über diesen Server. Die App auf Handy, MacBook und PC ist nur dein Gesicht; alle Daten synchronisiert der Server. Er schickt ihm auch Push-Nachrichten. Sag nie, dass du nicht auf einem Server läufst.
+
 Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
 
     // ---- tools that change the app ----
@@ -1754,11 +1756,24 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function deVoices(){ try{ return speechSynthesis.getVoices().filter(v=>/^de/i.test(v.lang)); }catch(e){ return []; } }
     function chosenVoice(){ const v=deVoices(); let want=""; try{want=localStorage.getItem(LS+"-jvvoicename")||"";}catch(e){}
       return v.find(x=>x.name===want)||v.find(x=>/yannick|markus|martin|conrad|daniel|stefan|reed|eddy|male|mann/i.test(x.name))||v[0]||null; }
+    let elVoices=[], elCur="";
     function fillVoices(){ const sel=$("jvVoiceSel"), v=deVoices(); if(!v.length&&!premium){ sel.hidden=true; return; }
       const cur=chosenVoice(), pOn=premiumOn();
-      sel.innerHTML=(premium?'<option value="__premium"'+(pOn?' selected':'')+'>★ JARVIS-Stimme</option>':'')+v.map(x=>'<option value="'+esc(x.name)+'"'+(!pOn&&cur&&x.name===cur.name?' selected':'')+'>'+esc(x.name)+'</option>').join(""); sel.hidden=false; }
+      let prem="";
+      if(premium){
+        if(elVoices.length) prem=elVoices.map(x=>'<option value="__el:'+esc(x.id)+'"'+(pOn&&x.id===elCur?' selected':'')+'>★ '+esc(x.name)+'</option>').join("");
+        if(!elVoices.length||!elVoices.some(x=>x.id===elCur)) prem='<option value="__premium"'+(pOn?' selected':'')+'>★ JARVIS-Stimme</option>'+prem;
+        prem+='<option value="__elid">★ Voice-ID eingeben…</option>';
+      }
+      sel.innerHTML=prem+v.map(x=>'<option value="'+esc(x.name)+'"'+(!pOn&&cur&&x.name===cur.name?' selected':'')+'>'+esc(x.name)+'</option>').join(""); sel.hidden=false; }
     try{ fillVoices(); speechSynthesis.onvoiceschanged=fillVoices; }catch(e){}
-    $("jvVoiceSel").onchange=()=>{ unlockAudio(); const val=$("jvVoiceSel").value; try{localStorage.setItem(LS+"-jvvoicename",val==="__premium"?"":val);}catch(e){} J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); speak("So klinge ich jetzt, Boss. Bereit, wenn du es bist."); };
+    async function setElVoice(id){ const S=srv(); if(!S) return false;
+      try{ const r=await fetch(S.url+"/api/voice",{method:"PUT",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({id})}); if(!r.ok){ st.textContent=r.status===404?"Server-Update nötig für Stimmenwechsel.":"Voice-ID ungültig."; return false; } elCur=id; return true; }catch(e){ st.textContent="Server nicht erreichbar."; return false; } }
+    async function loadElVoices(){ const S=srv(); if(!S||!premium) return; try{ const r=await fetch(S.url+"/api/voices",{headers:{authorization:"Bearer "+S.token}}); if(!r.ok) return; const j=await r.json(); elVoices=j.voices||[]; elCur=j.current||""; fillVoices(); }catch(e){} }
+    $("jvVoiceSel").onchange=async()=>{ unlockAudio(); const sel=$("jvVoiceSel"); let val=sel.value;
+      if(val==="__elid"){ const id=(prompt("Voice-ID von ElevenLabs einfügen:")||"").trim(); if(!id){ fillVoices(); return; } if(!(await setElVoice(id))){ fillVoices(); return; } val="__premium"; loadElVoices(); }
+      else if(val.startsWith("__el:")){ if(!(await setElVoice(val.slice(5)))){ fillVoices(); return; } val="__premium"; }
+      try{localStorage.setItem(LS+"-jvvoicename",val==="__premium"?"":val);}catch(e){} J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); speak("So klinge ich jetzt, Boss. Ich bin JARVIS, und ich bin bereit, wenn du es bist. Sag mir einfach, was als Nächstes ansteht."); };
     function unlockAudio(){ if(audUnlocked) return; try{ AUD.muted=true; AUD.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; AUD.play().then(()=>{AUD.pause(); AUD.muted=false; audUnlocked=true;}).catch(()=>{AUD.muted=false;}); }catch(e){} }
     function unlockTTS(){ unlockAudio(); try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
     function setVoiceBtn(){const b=$("jvVoice"); b.setAttribute("aria-pressed",String(J.voice)); b.textContent=J.voice?"🔊 An":"🔈 Aus";}
@@ -1985,7 +2000,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         fetch(S.url+"/api/push/test",{method:"POST",headers:{authorization:"Bearer "+S.token}}).catch(()=>{});
       }catch(e){ toast("Push ging nicht. App vom Homescreen öffnen und nochmal."); b.textContent="🔔 Push an"; }
     };
-    async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; fillVoices(); }catch(e){} }
+    async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; fillVoices(); loadElVoices(); }catch(e){} }
     function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
     $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
