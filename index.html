@@ -1705,7 +1705,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
 
     J.speaking=false;
     function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking){ if(canServerEar()) earStart().catch(()=>{}); else listen(true); } },400); }
-    const AUD=new Audio(); AUD.preload="auto"; let premium=false, audUnlocked=false;
+    const AUD=new Audio(); AUD.preload="auto"; AUD.volume=0.8; let premium=false, audUnlocked=false;
     function premiumOn(){ try{ return premium&&localStorage.getItem(LS+"-jvvoicename")!=="__device"&&!(localStorage.getItem(LS+"-jvvoicename")||"").length; }catch(e){ return premium; } }
     let speakGen=0;
     function chunks(t){ const out=[]; let cur=""; (t.match(/[^.!?;:]+[.!?;:]*\s*/g)||[t]).forEach(p=>{ if((cur+p).length>230&&cur){ out.push(cur.trim()); cur=""; } cur+=p; }); if(cur.trim()) out.push(cur.trim()); return out; }
@@ -1777,7 +1777,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       if(val==="__elid"){ const id=(prompt("Voice-ID von ElevenLabs einfügen:")||"").trim(); if(!id){ fillVoices(); return; } if(!(await setElVoice(id))){ fillVoices(); return; } val="__premium"; loadElVoices(); }
       else if(val.startsWith("__el:")){ if(!(await setElVoice(val.slice(5)))){ fillVoices(); return; } val="__premium"; }
       try{localStorage.setItem(LS+"-jvvoicename",val==="__premium"?"":val);}catch(e){} J.voice=true; try{localStorage.setItem(LS+"-jvvoice","1");}catch(e){} setVoiceBtn(); speak("So klinge ich jetzt, Boss. Ich bin JARVIS, und ich bin bereit, wenn du es bist. Sag mir einfach, was als Nächstes ansteht."); };
-    function unlockAudio(){ if(audUnlocked) return; try{ AUD.muted=true; AUD.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; AUD.play().then(()=>{AUD.pause(); AUD.muted=false; audUnlocked=true;}).catch(()=>{AUD.muted=false;}); }catch(e){} }
+    function unlockAudio(){ if(audUnlocked) return; try{ AUD.muted=true; AUD.src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; AUD.play().then(()=>{AUD.pause(); AUD.muted=false; AUD.volume=0.8; audUnlocked=true;}).catch(()=>{AUD.muted=false;}); }catch(e){} }
     function unlockTTS(){ unlockAudio(); try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
     function setVoiceBtn(){const b=$("jvVoice"); b.setAttribute("aria-pressed",String(J.voice)); b.textContent=J.voice?"🔊 An":"🔈 Aus";}
     $("jvVoice").onclick=()=>{unlockAudio(); J.voice=!J.voice; try{localStorage.setItem(LS+"-jvvoice",J.voice?"1":"0");}catch(e){} setVoiceBtn(); if(J.voice) speak("Stimme aktiv, Boss."); else try{speechSynthesis.cancel(); speakGen++; AUD.pause();}catch(e){}};
