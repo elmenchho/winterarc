@@ -105,10 +105,22 @@ const EDGE_VOICES = [
   { id: "edge:de-AT-JonasNeural", name: "Jonas (Österreich)" }
 ];
 const edgeOk = () => { try { fs.accessSync(EDGE_BIN, fs.constants.X_OK); return true; } catch { return false; } };
+const oaKey = () => { try { return rd("openai.key"); } catch { return ""; } };
+const OA_VOICES = [
+  { id: "openai:onyx", name: "Onyx (tief, JARVIS)" },
+  { id: "openai:cedar", name: "Cedar (warm, natürlich)" },
+  { id: "openai:ash", name: "Ash (klar, ruhig)" },
+  { id: "openai:ballad", name: "Ballad (sanft)" },
+  { id: "openai:echo", name: "Echo (neutral)" }
+];
+const OA_STYLE = "Sprich ausschließlich Deutsch, akzentfreies Hochdeutsch. Du bist JARVIS, ein eleganter, souveräner KI-Butler: ruhige, tiefe, selbstbewusste Stimme, gleichmäßiges Tempo, klare Aussprache, ein Hauch trockener Humor. Nicht übertrieben, nicht roboterhaft, keine Pausen-Füller.";
 const groqKey = () => { try { return rd("groq.key"); } catch { return ""; } };
 const elKey = () => { try { return rd("elevenlabs.key"); } catch { return ""; } };
 function voiceId() {
-  try { const v = load("voice", null); if (v && v.id) return v.id; } catch {}
+  let v = null; try { v = load("voice", null); } catch {}
+  if (oaKey()) { let t = 0; try { t = fs.statSync(path.join(KEYDIR, "openai.key")).mtimeMs; } catch {}
+    if (!v || !v.id || ((v.at || 0) < t && !v.id.startsWith("openai:"))) return OA_VOICES[0].id; }
+  if (v && v.id) return v.id;
   try { const v = rd("voice.id"); if (v) return v; } catch {}
   return EDGE_VOICES[0].id;
 }
@@ -126,7 +138,15 @@ function edgeTts(text, voice) {
 let elDeadUntil = 0, lastTtsErr = "";
 async function ttsBuffer(text) {
   const v = voiceId();
-  if (!v.startsWith("edge:") && elKey() && Date.now() > elDeadUntil) {
+  if (v.startsWith("openai:") && oaKey()) {
+    try {
+      const r = await fetch("https://api.openai.com/v1/audio/speech", { method: "POST", headers: { authorization: "Bearer " + oaKey(), "content-type": "application/json" },
+        body: JSON.stringify({ model: "gpt-4o-mini-tts", voice: v.slice(7), input: text, instructions: OA_STYLE, response_format: "mp3" }) });
+      if (r.ok) return Buffer.from(await r.arrayBuffer());
+      lastTtsErr = "OpenAI: " + (await r.text()).slice(0, 160);
+    } catch (e) { lastTtsErr = "OpenAI: " + (e.message || e); }
+  }
+  if (!v.startsWith("edge:") && !v.startsWith("openai:") && elKey() && Date.now() > elDeadUntil) {
     try {
       const r = await fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(v) + "?output_format=mp3_44100_128", {
         method: "POST", headers: { "xi-api-key": elKey(), "content-type": "application/json", accept: "audio/mpeg" },
@@ -272,21 +292,21 @@ const server = http.createServer(async (req, res) => {
       save("state", { ts: b.ts, data: b.data, by: dev.id }); return send(res, 200, { ok: true, ts: b.ts });
     }
     if (url.pathname === "/api/tts/status" && req.method === "GET") {
-      return send(res, 200, { ok: edgeOk() || !!elKey(), edge: edgeOk(), eleven: !!elKey() && Date.now() > elDeadUntil, hear: !!(groqKey() || elKey()) });
+      return send(res, 200, { ok: edgeOk() || !!elKey() || !!oaKey(), openai: !!oaKey(), edge: edgeOk(), eleven: !!elKey() && Date.now() > elDeadUntil, hear: !!(groqKey() || oaKey() || elKey()) });
     }
     if (url.pathname === "/api/pair/new" && req.method === "POST") {
       if (limited("pairnew:" + dev.id, 6, 3600e3)) return send(res, 429, { error: "Zu viele Codes. Später nochmal." });
       return send(res, 200, { code: newPairCode(), exp: 15 });
     }
     if (url.pathname === "/api/voices" && req.method === "GET") {
-      const cur = voiceId(); let voices = edgeOk() ? EDGE_VOICES.map(x => ({ ...x, cat: "gratis" })) : [];
+      const cur = voiceId(); let voices = (oaKey() ? OA_VOICES.map(x => ({ ...x, cat: "openai" })) : []).concat(edgeOk() ? EDGE_VOICES.map(x => ({ ...x, name: x.name + " · gratis", cat: "gratis" })) : []);
       if (elKey()) { try { const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": elKey() } });
         if (r.ok) { const j = await r.json(); voices = voices.concat((j.voices || []).map(v => ({ id: v.voice_id, name: v.name + " (ElevenLabs)", cat: v.category })).slice(0, 60)); } } catch {} }
       return send(res, 200, { current: cur, voices });
     }
     if (url.pathname === "/api/voice" && req.method === "PUT") {
       const b = await body(req), id = String((b && b.id) || "").trim();
-      if (!/^[A-Za-z0-9]{10,40}$/.test(id) && !EDGE_VOICES.some(x => x.id === id)) return send(res, 400, { error: "Voice-ID ungültig." });
+      if (!/^[A-Za-z0-9]{10,40}$/.test(id) && !EDGE_VOICES.some(x => x.id === id) && !OA_VOICES.some(x => x.id === id)) return send(res, 400, { error: "Voice-ID ungültig." });
       save("voice", { id, by: dev.id, at: Date.now() }); return send(res, 200, { ok: true, id });
     }
     if (url.pathname === "/api/stt" && req.method === "POST") {
@@ -302,6 +322,13 @@ const server = http.createServer(async (req, res) => {
         try { const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", { method: "POST", headers: { authorization: "Bearer " + groqKey() }, body: fd });
           const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {}
           if (r.ok) return send(res, 200, { text: String(j.text || "").trim() }); err = "Hören (Groq): " + t.slice(0, 140); } catch (e) { err = "Hören (Groq): " + e.message; }
+      }
+      if (oaKey()) {
+        const fd = new FormData(); fd.append("model", "gpt-4o-mini-transcribe"); fd.append("language", "de"); fd.append("response_format", "json");
+        fd.append("file", new Blob([audio], { type: ct }), fname);
+        try { const r = await fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { authorization: "Bearer " + oaKey() }, body: fd });
+          const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch {}
+          if (r.ok) return send(res, 200, { text: String(j.text || "").trim() }); err = "Hören (OpenAI): " + t.slice(0, 140); } catch (e) { err = "Hören (OpenAI): " + e.message; }
       }
       if (elKey()) {
         const fd = new FormData(); fd.append("model_id", "scribe_v1"); fd.append("language_code", "deu"); fd.append("tag_audio_events", "false");
