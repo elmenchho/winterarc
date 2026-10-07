@@ -1881,7 +1881,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       mr.onstop=async()=>{ REC.on=false; cancelAnimationFrame(REC.raf);
         if(!spoke||!J.talk){ if(J.talk&&!J.busy&&!J.speaking) setTimeout(earListen,150); return; }
         const blob=new Blob(REC.chunks,{type:mr.mimeType||"audio/webm"}); st.textContent="Verstehe…";
-        try{ const S=srv(); const r=await fetch(S.url+"/api/stt",{method:"POST",headers:{"content-type":blob.type,authorization:"Bearer "+S.token},body:blob}); const j=await r.json();
+        try{ const S=srv(); const r=await fetch(S.url+"/api/stt",{method:"POST",headers:{"content-type":blob.type,authorization:"Bearer "+S.token},body:blob}); const j=await r.json().catch(()=>({}));
+          if(!r.ok){ const m=j.error||("Hören-Fehler "+r.status); toast(m.slice(0,140)); stopTalk(m.slice(0,120)); return; }
           const q=(j.text||"").trim(); if(q&&J.talk){ inp.value=q; ask(q); } else if(J.talk){ talkUI(); setTimeout(earListen,150); } }
         catch(e){ st.textContent="Hören fehlgeschlagen."; if(J.talk) setTimeout(earListen,800); } };
       mr.start(250); talkUI();
