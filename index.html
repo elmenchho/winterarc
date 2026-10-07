@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<title>Winter Arc 90</title>
+<title>Winter Arc</title>
 <!-- Layout: sticky three-tab phone app (Heute · Essen · Geld) -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -366,6 +366,18 @@ details.setup .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px
 .jv-row button[aria-pressed="true"]{color:#bfe8ff;border-color:rgba(61,178,255,.6)}
 .jv-talk{border:0;border-radius:999px;padding:13px 22px;font:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(135deg,#1d6fd6,#3db2ff);box-shadow:0 8px 24px -10px rgba(61,178,255,.8)}
 .jv-talk.on{background:linear-gradient(135deg,#c2410c,#ffb020);color:#1a1205;box-shadow:0 8px 24px -10px rgba(255,176,32,.8)}
+.focusbar{position:relative;border-radius:18px;padding:16px 16px 14px;margin:4px 0 14px;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--ice-3) 22%,transparent),transparent 60%),var(--surface);border:1px solid color-mix(in srgb,var(--ice-3) 45%,var(--line));box-shadow:0 0 30px -14px var(--ice-3)}
+.focusbar .fe{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;color:var(--ice-3);text-transform:uppercase;display:flex;justify-content:space-between;gap:8px}
+.focusbar .fw{font-family:var(--f-display);font-weight:900;font-size:28px;line-height:1.1;margin:6px 0 4px;text-transform:uppercase;letter-spacing:.01em}
+.focusbar .fs{color:var(--muted);font-size:13.5px}
+.focusbar .fb{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.focusbar .fb button{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:999px;padding:9px 14px;font:inherit;font-size:14px;font-weight:700}
+.focusbar .fb button.pri{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.focusbar .fk{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.focusbar .fk button{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:999px;padding:7px 11px;font:inherit;font-size:13px}
+.focusbar .fall{position:absolute;right:12px;bottom:12px;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline}
+#pHeute.clean > .fhide{display:none!important}
+body:has(#pHeute.clean:not([hidden])) :is(#syncBox,#backupBox,#sync){display:none!important}
 #jvLog,#jvIn,#jvSend,#jvMic,#jvVoice,#jvVoiceSel{display:none!important}
 .jv-bar{background:none!important;border:0!important;box-shadow:none!important;justify-content:center;min-height:0}
 #jvVoiceSel{max-width:130px;background:var(--surface-2);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:4px 8px;font:inherit;font-size:12px;font-weight:600}
@@ -425,10 +437,11 @@ img{max-width:100%}
     <button class="tab jv-tab" role="tab" id="tJarvis" data-p="pJarvis" aria-selected="false">Jarvis</button>
   </div>
   <div class="panel" id="pHeute">
+  <section class="focusbar" id="focusBar" aria-live="polite"></section>
   <header class="hero">
     <div>
-      <div class="eyebrow">Winter Arc · 01.10. – 29.12.2026</div>
-      <div class="daynum" id="dayNum">1<small>/90</small></div>
+      <div class="eyebrow">Winter Arc · 07.10.2026 – 07.07.2027</div>
+      <div class="daynum" id="dayNum">1<small>/274</small></div>
       <div class="dateline" id="dateLine">Donnerstag, 1. Oktober</div>
     </div>
     <svg class="ring" viewBox="0 0 100 100" aria-label="Fortschritt heute">
@@ -467,10 +480,10 @@ img{max-width:100%}
     <div class="why-h"><span class="eyebrow">Mein Warum</span><button class="link" id="whyEdit">Bearbeiten</button></div>
     <div id="whyView"></div>
     <div class="wf" id="whyForm" hidden>
-      <label for="whyReasons">Warum ziehe ich die 90 Tage durch?</label>
+      <label for="whyReasons">Warum ziehe ich das bis 07.07.2027 durch?</label>
       <textarea id="whyReasons" rows="5" placeholder="Ein Grund pro Zeile, z. B.&#10;Ich will mir selbst beweisen, dass ich was durchziehe&#10;Ich will mein eigenes Geld verdienen"></textarea>
-      <label for="whyVision">Wer bin ich am 29.12.?</label>
-      <textarea id="whyVision" rows="3" placeholder="Beschreib den Typen, der am Tag 90 in den Spiegel schaut."></textarea>
+      <label for="whyVision">Wer bin ich am 07.07.2027?</label>
+      <textarea id="whyVision" rows="3" placeholder="Beschreib den Typen, der am letzten Tag in den Spiegel schaut."></textarea>
       <div class="btns"><button class="btn" id="whySave">Speichern</button><button class="btn ghost" id="whyCancel">Abbrechen</button></div>
     </div>
     <div class="mantra" id="mantra"></div>
@@ -505,7 +518,7 @@ img{max-width:100%}
     </div>
   </section>
 
-  <section class="sect">
+  <section class="sect" id="checkSect">
     <div class="sect-h"><h3>Checkliste</h3><span id="count">0/15</span></div>
     <div id="habitList"></div>
     <div class="group-l">Zahlen</div>
@@ -523,13 +536,13 @@ img{max-width:100%}
     </div>
   </section>
 
-  <section class="sect">
+  <section class="sect" id="bizSect">
     <div class="sect-h"><h3>Business</h3><span id="phaseRange">Tag 1–30</span></div>
     <div class="phase" id="phase"></div>
   </section>
 
   <section class="sect">
-    <div class="sect-h"><h3>90 Tage</h3><span id="avg">Ø 0%</span></div>
+    <div class="sect-h"><h3>274 Tage</h3><span id="avg">Ø 0%</span></div>
     <div class="grid" id="grid"></div>
     <div class="legend">
       <span><i style="background:var(--surface-2)"></i>offen</span>
@@ -554,7 +567,7 @@ img{max-width:100%}
   </section>
 
   <section class="rules">
-    <b>Gestrichen bis 29.12.</b>
+    <b>Gestrichen bis 07.07.</b>
     <ul>
       <li>Partys, Alkohol, unnötiges Rausgehen</li>
       <li>Social Media scrollen, Zocken</li>
@@ -806,8 +819,8 @@ img{max-width:100%}
 
 <script>
 (function(){
-  const START = new Date(2026, 9, 1); // 01.10.2026
-  const TOTAL = 90;
+  const START = new Date(2026, 9, 7); // 07.10.2026 (Neustart)
+  const TOTAL = 274; // bis 07.07.2027
   const DAY = 86400000;
   const WD = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
   const MO = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
@@ -837,18 +850,18 @@ img{max-width:100%}
     {g:"Kopf & Business", id:"bedtime", t:()=>"Handy weg um 22 Uhr"}
   ];
   const PHASES = [
-    {from:1,to:30,t:"Ideen testen",s:"Ideen anschauen und testen. Am 30.10. entscheidest du dich für genau eine."},
-    {from:31,to:60,t:"Aufbauen",s:"Nur noch die eine Idee bauen. Keine neuen anfangen."},
-    {from:61,to:90,t:"Erste Kunden",s:"Raus damit: erste Kunden, erster Umsatz."}
+    {from:1,to:30,t:"Ideen testen",s:"Ideen anschauen und testen. Am 05.11. entscheidest du dich für genau eine."},
+    {from:31,to:120,t:"Aufbauen",s:"Nur noch die eine Idee bauen. Keine neuen anfangen."},
+    {from:121,to:274,t:"Kunden & Wachstum",s:"Raus damit: erste Kunden, erster Umsatz, dann skalieren."}
   ];
-  const CHECKPOINTS = {30:"Checkpoint: Fotos + Gewicht",60:"Checkpoint: Fotos, Gewicht, Kraftwerte",90:"Finale: Vorher/Nachher"};
+  const CHECKPOINTS = {274:"Finale: Vorher/Nachher"}; for(let d=30; d<274; d+=30) CHECKPOINTS[d]=d%60?"Checkpoint: Fotos + Gewicht":"Checkpoint: Fotos, Gewicht, Kraftwerte";
 
   const MANTRAS = [
     "Motivation kommt und geht. Der Plan bleibt.",
     "Niemand sieht, was du im Winter machst. Alle sehen es im Frühling.",
     "Ein schlechter Tag ist kein Grund, einen zweiten dranzuhängen.",
     "Du hast nicht angefangen, um bei Tag 20 aufzuhören.",
-    "Der Typ am 29.12. dankt dir für heute.",
+    "Der Typ am 07.07. dankt dir für heute.",
     "Langweilig durchziehen schlägt motiviert abbrechen.",
     "Du musst heute nicht alles schaffen. Nur die Haken.",
     "Keine Lust ist kein Grund. Mach's trotzdem.",
@@ -858,7 +871,7 @@ img{max-width:100%}
     "Du bist nicht müde. Du bist nur ungeübt im Durchziehen."
   ];
 
-  function rot(d){ if(d<=6) return (((d-2)%4)+4)%4; const ov={7:2,8:0,9:1,10:3}; if(ov[d]!=null) return ov[d]; return (((d-11)%4)+4)%4; } /* Umstellung 07.10.: Mi Beine, Do Brust+Rücken, Fr Arme, Sa Pause, dann normal */
+  function rot(d){ const ov={1:2,2:0,3:1,4:3}; if(ov[d]!=null) return ov[d]; return (((d-5)%4)+4)%4; } /* Start 07.10.: Mi Beine, Do Brust+Rücken, Fr Arme, Sa Pause, dann im 4er-Rhythmus */
   function dateOf(d){return new Date(START.getFullYear(),START.getMonth(),START.getDate()+d-1)}
   function todayIdx(){
     const n=new Date(); const t=new Date(n.getFullYear(),n.getMonth(),n.getDate());
@@ -873,6 +886,11 @@ img{max-width:100%}
   const LS="winterarc90";
   function norm(s){
     s.days=s.days||{}; s.why=s.why||{};
+    if(!s.arc2){ // Neustart 07.10.2026: alter Tag 7 = neuer Tag 1, Tage 1–6 ins Archiv
+      const nd={}, arch={}; for(const k in s.days){ const d=+k; if(d>=7) nd[d-6]=s.days[k]; else arch[k]=s.days[k]; }
+      s.days=nd; s.archive=Object.assign(s.archive||{}, {arc1:arch}); s.arc2=1;
+      if(s.focus) s.focus.day=(s.focus.day||7)-6;
+    }
     s.settings=Object.assign({kcal:2800,protein:160,foodWeek:50},s.settings||{});
     if(!Array.isArray(s.supps)) s.supps=[{id:"crea",n:"Kreatin",d:"4 g",t:"Morgens"}];
     if(!s.creaV4){ s.creaV4=1; s.supps.forEach(x=>{ if(/kreatin/i.test(x.n||"")) x.d="4 g"; }); }
@@ -907,8 +925,9 @@ img{max-width:100%}
     return s;
   }
   if(!window.__vault){ try{const c=localStorage.getItem(LS); if(c){const p=JSON.parse(c); if(p&&p.days) state=p;}}catch(e){} }
-  norm(state);
+  const _wasArc2=!!state.arc2; norm(state);
   function persistLocal(){ if(window.__vault){ window.__vault.saveState(state); return; } try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){} }
+  if(!_wasArc2&&Object.keys(state.days).length) persistLocal();
   window.__applyState=o=>{ if(!o||!o.days) return; state=norm(o); try{ render(); renderEditors(); if(window.__jarvisRedraw) window.__jarvisRedraw(); }catch(e){} };
   window.__saveNow=()=>persistLocal();
   let ref=null, saving=false, dirty=false, timer=null;
@@ -953,10 +972,71 @@ img{max-width:100%}
   const $=id=>document.getElementById(id);
   const checkSvg='<svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7" fill="none" stroke="var(--accent-ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+
+  // ---------- Fokus: die Startseite zeigt nur, was gerade dran ist ----------
+  const FOCUS={
+    gym:{ic:"🏋️",l:"Gym",show:["workout"]},
+    arbeit:{ic:"💼",l:"Arbeit / Business",show:["todoCard","bizSect"]},
+    lernen:{ic:"📚",l:"Lernen",show:[]},
+    essen:{ic:"🍽",l:"Essen",show:["supps"]},
+    pause:{ic:"☕",l:"Pause",show:[]},
+    unterwegs:{ic:"🚗",l:"Unterwegs",show:["todoCard"]},
+    abend:{ic:"🌙",l:"Abend",show:["journal","checkSect"]},
+    frei:{ic:"⚡",l:"Frei",show:[]}
+  };
+  let showAll=false;
+  function guessKind(n){ n=String(n).toLowerCase();
+    if(/gym|training|spaziergang/.test(n)) return "gym";
+    if(/business|bewerb|job|arbeit|kumpel|projekt/.test(n)) return "arbeit";
+    if(/duolingo|englisch|lesen|lernen/.test(n)) return "lernen";
+    if(/essen|frühstück|mittag|snack|meal|kochen/.test(n)) return "essen";
+    if(/tagebuch|schlafen|abend-check|handy weg/.test(n)) return "abend";
+    return "frei"; }
+  function curFocus(){ const f=state.focus; if(!f||f.day!==todayIdx()||Date.now()-(f.at||0)>8*3600e3||f.k==="frei"&&!f.what) return null; return f; }
+  function setFocus(k,what,sid){ state.focus=k?{k:FOCUS[k]?k:"frei",what:String(what||"").slice(0,80),sid:sid||null,at:Date.now(),day:todayIdx()}:null; showAll=false; persist(); render(); }
+  function nextItem(){ const d=todayIdx(), S=daySlots(d), sd=(state.days[d]||{}).sd||{}, cs=curSlot(), ci=SLOTS.findIndex(s=>s[0]===cs);
+    for(let i=ci;i<SLOTS.length;i++){ const it=(S[SLOTS[i][0]]||[]).find(x=>!sd[x.id]); if(it) return {it,slot:SLOTS[i][1]}; } return null; }
+  function finishFocus(){ const f=curFocus(), d=todayIdx(), dd=ensure(d); dd.sd=dd.sd||{}; dd.h=dd.h||{};
+    if(f){ if(f.sid) dd.sd[f.sid]=true;
+      if(f.k==="gym"){ dd.h.train=true; const S=daySlots(d); for(const k in S)(S[k]||[]).forEach(x=>{ if(/gym|training/i.test(x.n)) dd.sd[x.id]=true; }); } }
+    state.focus=null; persist(); render(); toast("Erledigt, Boss. ✓"); }
+  function renderFocus(){
+    const el=$("focusBar"), isToday=sel===todayIdx(), P=$("pHeute");
+    if(!isToday){ el.hidden=true; P.classList.remove("clean"); return; } el.hidden=false;
+    const f=curFocus(), cs=SLOTS.find(s=>s[0]===curSlot()), hm=x=>new Date(x).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+    let html="";
+    if(f){ const F=FOCUS[f.k]||FOCUS.frei, title=f.k==="gym"?"Gym · "+WORKOUTS[rot(sel)].name:(f.what||F.l);
+      html='<div class="fe"><span>Jetzt</span><span>seit '+hm(f.at)+'</span></div><div class="fw">'+F.ic+' '+esc(title)+'</div>'+(f.what&&f.k!=="frei"&&f.k!=="gym"?'<div class="fs">'+esc(F.l)+'</div>':'')+
+        '<div class="fb"><button class="pri" data-fa="done" type="button">✓ Fertig</button><button data-fa="switch" type="button">Wechseln</button></div>';
+    } else { const n=nextItem();
+      html='<div class="fe"><span>Jetzt · '+cs[1]+'</span><span>'+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+'</span></div>'+
+        (n?'<div class="fs">Als Nächstes'+(n.slot!==cs[1]?' ('+n.slot+')':'')+'</div><div class="fw">'+esc(planLabel(n.it.n))+'</div><div class="fb"><button class="pri" data-fa="start" data-sid="'+esc(n.it.id)+'" type="button">▶ Starten</button><button data-fa="tick" data-sid="'+esc(n.it.id)+'" type="button">✓ Schon erledigt</button><button data-fa="switch" type="button">Was anderes</button></div>'
+          :'<div class="fw">Alles erledigt 💪</div><div class="fs">Sag Jarvis, was du jetzt machst.</div>');
+    }
+    if(el._sw) html+='<div class="fk">'+Object.keys(FOCUS).map(k=>'<button data-fk="'+k+'" type="button">'+FOCUS[k].ic+' '+FOCUS[k].l+'</button>').join("")+'</div>';
+    html+='<button class="fall" data-fa="all" type="button">'+(showAll?"Weniger zeigen":"Alles zeigen")+'</button>';
+    el.innerHTML=html;
+    // aufräumen: nur zeigen, was gerade gebraucht wird
+    const keep=new Set(["focusBar"].concat(f?(FOCUS[f.k]||FOCUS.frei).show:["plan","todoCard"]));
+    [...P.children].forEach(c=>c.classList.toggle("fhide",!keep.has(c.id)));
+    P.classList.toggle("clean",!showAll);
+  }
+  document.addEventListener("click",e=>{ const b=e.target.closest("#focusBar button"); if(!b) return; const el=$("focusBar");
+    if(b.dataset.fk){ el._sw=false; setFocus(b.dataset.fk,""); return; }
+    const a=b.dataset.fa;
+    if(a==="all"){ showAll=!showAll; renderFocus(); return; }
+    if(a==="switch"){ el._sw=!el._sw; renderFocus(); return; }
+    if(a==="done"){ finishFocus(); return; }
+    const d=todayIdx(), S=daySlots(d); let it=null; for(const k in S)(S[k]||[]).forEach(x=>{ if(x.id===b.dataset.sid) it=x; });
+    if(a==="tick"&&it){ const dd=ensure(d); dd.sd=dd.sd||{}; dd.sd[it.id]=true; persist(); render(); return; }
+    if(a==="start"&&it){ setFocus(guessKind(it.n),planLabel(it.n),it.id); }
+  });
+  setInterval(()=>{ if(!document.hidden&&$("focusBar")) renderFocus(); },60e3);
+
   function render(){
     const ti=todayIdx(), tc=clamp(ti);
     const date=dateOf(sel);
-    $("dayNum").innerHTML=sel+'<small>/90</small>';
+    $("dayNum").innerHTML=sel+'<small>/'+TOTAL+'</small>';
     $("dateLine").textContent=WD[date.getDay()]+", "+date.getDate()+". "+MO[date.getMonth()];
     if(ti<1) $("dateLine").textContent+=" · Start in "+(1-ti)+" Tag"+(1-ti===1?"":"en");
 
@@ -1021,7 +1101,7 @@ img{max-width:100%}
     }
     $("grid").innerHTML=g;
     if(!editing) renderWhy(); else $("mantra").innerHTML='<span>Satz für Tag '+sel+'</span>'+esc(MANTRAS[(sel-1)%MANTRAS.length]);
-    renderPlan(); renderTodos(); renderJournal(); renderGoal(); renderSupps(); renderFood(); renderMoney(); renderRecipes(); renderShop();
+    renderPlan(); renderTodos(); renderJournal(); renderGoal(); renderSupps(); renderFood(); renderMoney(); renderRecipes(); renderShop(); renderFocus();
   }
 
 
@@ -1060,7 +1140,7 @@ img{max-width:100%}
     const add=e.target.dataset.padd; if(add){state.slots[add].push({id:"p"+Date.now().toString(36),n:""}); renderPlanEditor(); const r=$("planEd").querySelectorAll('.edrow3[data-k="'+add+'"] input[data-f="n"]'); r[r.length-1].focus(); return;}
     if(e.target.dataset.pdel){const r=e.target.closest(".edrow3"); state.slots[r.dataset.k].splice(+r.dataset.i,1); persist(); renderPlanEditor();}
   });
-  $("planSlots").addEventListener("click",e=>{const b=e.target.closest("[data-sid]"); if(!b||b.disabled) return; const dd=ensure(sel); dd.sd=dd.sd||{}; const id=b.dataset.sid; if(dd.sd[id]) delete dd.sd[id]; else dd.sd[id]=true; persist(); renderPlan();});
+  $("planSlots").addEventListener("click",e=>{const b=e.target.closest("[data-sid]"); if(!b||b.disabled) return; const dd=ensure(sel); dd.sd=dd.sd||{}; const id=b.dataset.sid; if(dd.sd[id]) delete dd.sd[id]; else dd.sd[id]=true; persist(); renderPlan(); renderFocus();});
   $("planNote").addEventListener("click",e=>{if(e.target.id==="planReset"){const dd=ensure(sel); delete dd.slotsOv; delete dd.awaySlots; persist(); renderPlan();}});
   setInterval(()=>{if(!planEditing) renderPlan();},60000);
 
@@ -1090,7 +1170,7 @@ img{max-width:100%}
     const when=slots.map(k=>SN[k]).join(" + ");
     if(/party/i.test(type)){
       $("aTitle").textContent="ABGELEHNT!";
-      v.innerHTML='<p class="big">Boss, Partys sind bis 29.12. gestrichen. Das war deine eigene Regel.</p><p>Denk an dein Warum. Ein Abend Party kostet dich den nächsten Morgen, das Training und deine Streak.</p><div class="btns" style="flex-direction:column"><button class="btn" data-a="stay">Verstanden, ich bleib beim Plan</button><button class="btn ghost" data-a="breach">Ich geh trotzdem (wird als Verstoß notiert)</button></div>';
+      v.innerHTML='<p class="big">Boss, Partys sind bis 07.07. gestrichen. Das war deine eigene Regel.</p><p>Denk an dein Warum. Ein Abend Party kostet dich den nächsten Morgen, das Training und deine Streak.</p><div class="btns" style="flex-direction:column"><button class="btn" data-a="stay">Verstanden, ich bleib beim Plan</button><button class="btn ghost" data-a="breach">Ich geh trotzdem (wird als Verstoß notiert)</button></div>';
       return;
     }
     if(!crit.length){
@@ -1632,10 +1712,11 @@ img{max-width:100%}
       const w=state.why||{};
       const gs=goalSaved();
       return [
-        "JETZT: "+WD[now.getDay()]+", "+now.toLocaleDateString("de-DE")+", "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0")+" Uhr. Winter Arc Tag "+d+" von 90 (01.10.–29.12.2026). Aktueller Slot: "+(SLOTS.find(s=>s[0]===curSlot())||[])[1]+".",
+        "JETZT: "+WD[now.getDay()]+", "+now.toLocaleDateString("de-DE")+", "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0")+" Uhr. Winter Arc Tag "+d+" von "+TOTAL+" (07.10.2026–07.07.2027). Aktueller Slot: "+(SLOTS.find(s=>s[0]===curSlot())||[])[1]+".",
         "TRAINING HEUTE: "+WORKOUTS[rot(d)].name+" ("+WORKOUTS[rot(d)].ex.map(e=>e[0]+" "+e[1]).join(", ")+"). MORGEN: "+WORKOUTS[rot(d+1)].name+". Gym am besten nachmittags vor 16 Uhr.",
         "HABITS HEUTE ("+HABITS.filter(x=>h[x.id]).length+"/"+HABITS.length+"):\n"+habits,
-        "TAGESPLAN-SLOTS:\n"+slots,
+        "GERADE (Fokus auf der Startseite): "+(curFocus()?((FOCUS[curFocus().k]||FOCUS.frei).l+(curFocus().what?" – "+curFocus().what:"")+" seit "+new Date(curFocus().at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})):"nichts gesetzt"),
+         "TAGESPLAN-SLOTS:\n"+slots,
         "OFFENE TO-DOS:\n"+todos,
         "ESSEN HEUTE: "+ft.k+"/"+g.kcal+" kcal, "+ft.p+"/"+g.protein+" g Eiweiß. Gegessen: "+food+". Ziel: Muskelaufbau + Bauch weg, 3 Mahlzeiten. Isst NICHT: Zwiebeln, Salat, Ketchup, Thunfisch, Linsen; Fisch nur Fischstäbchen. Mag Hähnchen, Kartoffeln, Spinat, Gemüse, Mozzarella.",
         "GELD: Konto "+B.konto.toFixed(2)+" €, Bargeld "+B.cash.toFixed(2)+" €. Monat: Fixkosten "+fixed+" €, vom Konto ausgegeben "+spent.toFixed(2)+" €, bar "+spentBar.toFixed(2)+" €"+(left!=null?", übrig "+left.toFixed(2)+" €":", Einkommen nicht eingetragen")+". Schulden: "+debts+". Letzte Buchungen: "+(last||"keine")+".",
@@ -1645,12 +1726,13 @@ img{max-width:100%}
       ].join("\n\n");
     }
 
-    const RULES=`Du bist JARVIS, der persönliche KI-Assistent von Luis. Er ist "Boss" – sprich ihn immer so an, nie "Kommandant". Er wohnt in Augsburg und zieht gerade seinen 90-Tage-Winter-Arc durch: Disziplin, Gym (Arnold-Split), Ernährung, Englisch, Business aufbauen, Geld in den Griff kriegen, Ziel Lamborghini Urus.
+    const RULES=`Du bist JARVIS, der persönliche KI-Assistent von Luis. Er ist "Boss" – sprich ihn immer so an, nie "Kommandant". Er wohnt in Augsburg und zieht gerade seinen Winter Arc durch (07.10.2026 bis 07.07.2027): Disziplin, Gym (Arnold-Split), Ernährung, Englisch, Business aufbauen, Geld in den Griff kriegen, Ziel Lamborghini Urus.
 
 Dein Stil: lockeres Deutsch, kurz und direkt, wie ein loyaler Elite-Butler mit Drill-Ton. Maximal 3–5 kurze Sätze, außer er will einen Plan. Keine langen Listen, keine Emojis-Flut (höchstens eins). Keine minutengenauen Zeiten – denk in Slots: Morgens, Vormittag, Nachmittag, Abend.
 
 Du managst sein Leben aktiv:
 - Wenn er etwas erledigt, ausgegeben, verdient oder gegessen hat oder etwas notieren will: trag es SOFORT mit den Tools ein, ohne nachzufragen, und bestätige knapp. Hake dabei ALLES ab, was dazu passt – den Habit in der Checkliste UND den passenden Punkt im Tagesplan (check_habit + check_slot), damit er nie selbst abhaken muss. Kalorien und Eiweiß schätzt du selbst realistisch.
+- Wenn er sagt, was er gerade macht oder gleich macht (z.B. „ich geh ins Gym“, „ich schreib jetzt Bewerbungen“): ruf SOFORT set_focus auf – dann zeigt seine Startseite nur noch genau das. Wenn er fertig ist: abhaken (check_habit/check_slot) und set_focus mit kind 'frei'. Wenn er nichts gesetzt hat und du mit ihm redest, frag kurz: „Was machst du gerade, Boss?“
 - Wenn er fragt, was zu tun ist: schau auf Uhrzeit, Slot, offene Haken und To-dos und sag ihm genau EINE nächste Aktion.
 - Wenn er aufgeben will, schwach wird, Party/Alkohol/Fast Food/Gaming/Goonen erwähnt: bleib ruhig und hart, erinnere ihn an sein Warum und den Urus, gib ihm einen konkreten Mini-Schritt für die nächsten 10 Minuten. Nie beleidigend.
 - Bei Geld: ehrlich und konkret, keine Finanzberatung mit Garantie.
@@ -1672,6 +1754,9 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       {name:"check_slot",description:"Markiert einen Punkt im heutigen Tagesplan (slot_id aus dem Lagebild) als erledigt oder offen.",
        inputSchema:{type:"object",properties:{slot_id:{type:"string"},done:{type:"boolean"}},required:["slot_id"]},
        execute(i){const d=today(), S=daySlots(d); let it=null; for(const k in S)(S[k]||[]).forEach(x=>{if(x.id===String(i.slot_id)) it=x;}); if(!it) throw new Error("Slot nicht gefunden"); const dd=ensure(d); dd.sd=dd.sd||{}; dd.sd[it.id]=i.done!==false; changed(); acts.push("✓ "+planLabel(it.n)); return "ok";}},
+      {name:"set_focus",description:"Setzt, was der Boss GERADE macht – die Startseite zeigt dann nur das. kind: gym, arbeit, lernen, essen, pause, unterwegs, abend, frei. what = kurze Beschreibung (z.B. 'Bewerbungen schreiben'). Wenn er fertig ist: kind 'frei' und what leer.",
+       inputSchema:{type:"object",properties:{kind:{type:"string",enum:["gym","arbeit","lernen","essen","pause","unterwegs","abend","frei"]},what:{type:"string"}},required:["kind"]},
+       execute(i){ const k=String(i.kind||"frei"); if(k==="frei"&&!i.what){ state.focus=null; persist(); render(); acts.push("Fokus beendet"); return "ok"; } setFocus(k,i.what||""); acts.push("Jetzt: "+((FOCUS[k]||FOCUS.frei).ic)+" "+(i.what||(FOCUS[k]||FOCUS.frei).l)); return "ok"; }},
       {name:"add_todo",description:"Legt ein To-do an. due als YYYY-MM-DD (optional), time als HH:MM (optional).",
        inputSchema:{type:"object",properties:{text:{type:"string"},due:{type:"string"},time:{type:"string"}},required:["text"]},
        execute(i){const t=String(i.text||"").trim(); if(!t) throw new Error("Text fehlt"); const due=/^\d{4}-\d{2}-\d{2}$/.test(i.due||"")?i.due:null, time=/^\d{1,2}:\d{2}$/.test(i.time||"")?i.time:null;
@@ -1711,7 +1796,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function brief(){
       const d=today(), h=(state.days[d]||{}).h||{}, n=HABITS.filter(x=>h[x.id]).length;
       const open=state.todos.filter(x=>!x.done).length;
-      return "Tag "+d+"/90. "+n+"/"+HABITS.length+" Haken. Heute: "+WORKOUTS[rot(d)].name+"."+(open?" "+open+" To-do"+(open>1?"s":"")+" offen.":"")+" Was steht an?";
+      return "Tag "+d+"/"+TOTAL+". "+n+"/"+HABITS.length+" Haken. Heute: "+WORKOUTS[rot(d)].name+"."+(open?" "+open+" To-do"+(open>1?"s":"")+" offen.":"")+" Was steht an?";
     }
     function setBusy(b,txt){J.busy=b; orb.classList.toggle("busy",b); $("jvStop").hidden=!b; $("jvSend").hidden=b; st.textContent=txt||(b?"Denke nach…":"Online. Bereit, Boss."); if(!b) talkUI();}
 
@@ -2094,13 +2179,13 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     const w=state.why||{}, r=(w.reasons||[]).filter(Boolean);
     let h="";
     if(r.length) h+='<ul>'+r.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>';
-    if(w.vision) h+='<p class="vision"><b>Am 29.12. bin ich</b>'+esc(w.vision)+'</p>';
+    if(w.vision) h+='<p class="vision"><b>Am 07.07. bin ich</b>'+esc(w.vision)+'</p>';
     return h;
   }
   let editing=false;
   function renderWhy(){
     const h=whyHtml();
-    $("whyView").innerHTML=h||'<p class="empty">Schreib hier rein, warum du die 90 Tage durchziehst. Das ist das Erste, was du siehst, wenn du die App öffnest, und es kommt, wenn du aufgeben willst.</p>';
+    $("whyView").innerHTML=h||'<p class="empty">Schreib hier rein, warum du das durchziehst. Das ist das Erste, was du siehst, wenn du die App öffnest, und es kommt, wenn du aufgeben willst.</p>';
     $("whyView").hidden=editing; $("whyForm").hidden=!editing;
     $("whyEdit").textContent=h?"Bearbeiten":"Jetzt aufschreiben";
     $("whyEdit").hidden=editing;
