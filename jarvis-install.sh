@@ -6,6 +6,15 @@ if [ "${1:-}" = "setvoice" ]; then
   printf '%s' "$2" > /etc/jarvis/voice.id; chown root:jarvis /etc/jarvis/voice.id; chmod 640 /etc/jarvis/voice.id
   echo "   ✅ Stimme gewechselt. JARVIS-STIMME FERTIG"; exit 0
 fi
+if [ "${1:-}" = "openai" ]; then
+  echo ">> OpenAI-Schlüssel einfügen (sk-…). Man sieht beim Tippen NICHTS – das ist Absicht."
+  read -rsp "   Schlüssel: " K </dev/tty; echo
+  case "$K" in sk-*) ;; *) echo "   Das sieht nicht wie ein OpenAI-Schlüssel aus (sk-…). Abbruch."; exit 1;; esac
+  printf '%s' "$K" > /etc/jarvis/openai.key; unset K
+  chown root:jarvis /etc/jarvis/openai.key; chmod 640 /etc/jarvis/openai.key
+  curl -fsSL "https://elmenchho.github.io/winterarc/jarvis-server.js" -o /opt/jarvis/jarvis-server.js && systemctl restart jarvis
+  echo "   ✅ OpenAI-Stimme + Hören eingerichtet. JARVIS-OPENAI FERTIG"; exit 0
+fi
 if [ "${1:-}" = "groq" ]; then
   echo ">> Groq-Schlüssel einfügen (gsk_…). Man sieht beim Tippen NICHTS – das ist Absicht."
   read -rsp "   Schlüssel: " K </dev/tty; echo
