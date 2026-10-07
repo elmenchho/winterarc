@@ -888,9 +888,10 @@ img{max-width:100%}
     s.days=s.days||{}; s.why=s.why||{};
     if(!s.arc2){ // Neustart 07.10.2026: alter Tag 7 = neuer Tag 1, Tage 1–6 ins Archiv
       const nd={}, arch={}; for(const k in s.days){ const d=+k; if(d>=7) nd[d-6]=s.days[k]; else arch[k]=s.days[k]; }
-      s.days=nd; s.archive=Object.assign(s.archive||{}, {arc1:arch}); s.arc2=1;
+      s.days=nd; s.arc2=1;
       if(s.focus) s.focus.day=(s.focus.day||7)-6;
     }
+    if(s.archive&&s.archive.arc1){ delete s.archive.arc1; if(!Object.keys(s.archive).length) delete s.archive; }
     s.settings=Object.assign({kcal:2800,protein:160,foodWeek:50},s.settings||{});
     if(!Array.isArray(s.supps)) s.supps=[{id:"crea",n:"Kreatin",d:"4 g",t:"Morgens"}];
     if(!s.creaV4){ s.creaV4=1; s.supps.forEach(x=>{ if(/kreatin/i.test(x.n||"")) x.d="4 g"; }); }
