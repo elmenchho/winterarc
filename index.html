@@ -642,7 +642,7 @@ img{max-width:100%}
     </div>
     <div class="jv-row">
       <span id="jvHint">Tippe oder sprich. Ich kann eintragen, abhaken und planen.</span>
-      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvPush" type="button" hidden>🔔 Push an</button><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
+      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvPush" type="button" hidden>🔔 Push an</button><button id="jvDev" type="button" hidden>📲 Gerät</button><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
     </div>
     <div class="jv-log" id="jvLog" aria-live="polite"></div>
     <div class="jv-off" id="jvOff" hidden></div>
@@ -1952,10 +1952,45 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       return f;
     }
     const INP='style="width:100%;margin:8px 0;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;box-sizing:border-box"';
+    function homeUrl(){ return /github\.io$/.test(location.hostname)||location.protocol!=="https:"?"https://91-98-2-107.sslip.io":location.origin; }
+    async function pairWith(url,code){
+      const nm=(/iPhone|Android/i.test(navigator.userAgent)?"Handy":/Mac/i.test(navigator.userAgent)?"MacBook":/Win/i.test(navigator.userAgent)?"Windows-PC":"Gerät");
+      const r=await fetch(url+"/api/pair",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({code,name:nm})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.token) return {ok:false,error:j.error};
+      try{ localStorage.setItem("wa-srv-fresh","1"); }catch(e){}
+      await setSrv({url,token:j.token,id:j.id});
+      if(window.__srvSync) window.__srvSync(true);
+      return {ok:true};
+    }
+    $("jvDev").onclick=async()=>{
+      const S=srv(); if(!S) return; const o=$("jvOff");
+      try{
+        const r=await fetch(S.url+"/api/pair/new",{method:"POST",headers:{authorization:"Bearer "+S.token}}); const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.code){ toast(r.status===404?"Server-Update nötig.":(j.error||"Ging nicht")); return; }
+        const link=S.url+"/#pair="+j.code, here=location.origin===S.url;
+        o.hidden=false;
+        o.innerHTML='<b style="color:var(--fg)">📲 Gerät verbinden</b><br>'+(here?'':'<b>Jarvis hat jetzt seine eigene Adresse.</b> Tipp unten auf „Hierher wechseln“, dann läuft alles über deinen Server.<br>')+
+          'Auf dem neuen Gerät diesen Link öffnen (15 Min gültig, nur 1×):<br><input '+INP+' readonly value="'+esc(link)+'" id="jvDevLink">'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" id="jvDevCopy">Link kopieren</button>'+(here?'':'<button class="btn" type="button" id="jvDevGo">Hierher wechseln →</button>')+'<button class="btn" type="button" id="jvDevX">Schließen</button></div>'+
+          '<small>Code: '+esc(j.code)+'</small>';
+        $("jvDevCopy").onclick=()=>{ try{ navigator.clipboard.writeText(link); toast("Kopiert"); }catch(e){ $("jvDevLink").select(); } };
+        if($("jvDevGo")) $("jvDevGo").onclick=()=>{ location.href=link; };
+        $("jvDevX").onclick=()=>{ o.hidden=true; o.innerHTML=""; };
+      }catch(e){ toast("Server nicht erreichbar"); }
+    };
+    async function hashPair(){
+      const m=/[#&]pair=([A-Z0-9-]{8,})/i.exec(location.hash); if(!m) return false;
+      try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+      if(srv()) return false;
+      st.textContent="Verbinde mit deinem Server …";
+      try{ const j=await pairWith(homeUrl(),m[1].toUpperCase()); if(j.ok){ toast("Mit JARVIS-Server verbunden, Boss."); return true; } toast(j.error||"Kopplung fehlgeschlagen"); }catch(e){ toast("Server nicht erreichbar"); }
+      return false;
+    }
     function keySetup(){
       const o=$("jvOff"); o.hidden=false;
       o.innerHTML='<b style="color:var(--fg)">🛰 Mit deinem JARVIS-Server verbinden</b><br>Auf dem Server einen Kopplungscode erzeugen und hier eingeben. Dann laufen Gehirn und Daten über deinen Server.<br>'+
-        '<input id="jvSrvUrl" '+INP+' autocomplete="off" value="https://91-98-2-107.sslip.io" placeholder="https://…">'+
+        '<input id="jvSrvUrl" '+INP+' autocomplete="off" value="'+homeUrl()+'" placeholder="https://…">'+
         '<input id="jvSrvCode" '+INP+' autocomplete="off" autocapitalize="characters" placeholder="Kopplungscode (XXXXX-XXXXX)">'+
         '<button class="btn" id="jvSrvOk" type="button">Mit Server verbinden</button>'+
         '<details style="margin-top:14px;text-align:left"><summary>Ohne Server (nur Schlüssel auf diesem Gerät)</summary>'+
@@ -1969,13 +2004,9 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         if(window.__vault&&!window.__vault.open){ toast("Erst entsperren"); return; }
         $("jvSrvOk").disabled=true; $("jvSrvOk").textContent="Verbinde …";
         try{
-          const nm=(/iPhone|Android/i.test(navigator.userAgent)?"Handy":/Mac/i.test(navigator.userAgent)?"MacBook":/Win/i.test(navigator.userAgent)?"Windows-PC":"Gerät");
-          const r=await fetch(url+"/api/pair",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({code,name:nm})});
-          const j=await r.json().catch(()=>({}));
-          if(!r.ok||!j.token){ toast(j.error||"Kopplung fehlgeschlagen"); $("jvSrvOk").disabled=false; $("jvSrvOk").textContent="Mit Server verbinden"; return; }
-          await setSrv({url,token:j.token,id:j.id});
+          const j=await pairWith(url,code);
+          if(!j.ok){ toast(j.error||"Kopplung fehlgeschlagen"); $("jvSrvOk").disabled=false; $("jvSrvOk").textContent="Mit Server verbinden"; return; }
           o.hidden=true; o.innerHTML=""; useApi(); toast("Mit JARVIS-Server verbunden, Boss.");
-          if(window.__srvSync) window.__srvSync(true);
         }catch(e){ toast("Server nicht erreichbar"); $("jvSrvOk").disabled=false; $("jvSrvOk").textContent="Mit Server verbinden"; }
       };
       $("jvKeyOk").onclick=()=>{ const k=$("jvKey").value.trim(); if(!/^sk-ant-/.test(k)){ $("jvKey").focus(); toast("Schlüssel beginnt mit sk-ant-"); return; }
@@ -2001,12 +2032,13 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       }catch(e){ toast("Push ging nicht. App vom Homescreen öffnen und nochmal."); b.textContent="🔔 Push an"; }
     };
     async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; fillVoices(); loadElVoices(); }catch(e){} }
-    function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; }
+    function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp aufs Orb und rede.":"Eigenes Gehirn aktiv. Tipp aufs Orb und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; $("jvDev").hidden=!srv(); if(srv()&&/github\.io$/.test(location.hostname)) $("jvHint").textContent="🛰 Verbunden. Neu: Jarvis hat eine eigene Adresse – tipp auf 📲 Gerät."; }
     $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
     function offline(){ if(!window.claude||!window.claude.use){
         window.__jvAfterUnlock=()=>{ $("jvOff").hidden=true; offline(); };
         if(window.__vault&&!window.__vault.open){ st.textContent="Gesperrt."; return; }
+        if(/[#&]pair=/.test(location.hash)){ hashPair().then(()=>{ if(srv()||apiKey()) useApi(); else keySetup(); }); return; }
         if(srv()||apiKey()) useApi(); else keySetup(); return; } offlineOld(); }
     function offlineOld(){
       const o=$("jvOff"); o.hidden=false;
@@ -2176,6 +2208,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
   async function srvReq(method,body){ const s=S(); const r=await fetch(s.url+"/api/state",{method,headers:{"content-type":"application/json","authorization":"Bearer "+s.token},body:body?JSON.stringify(body):undefined,cache:"no-store"}); const j=await r.json().catch(()=>({})); return {status:r.status,j}; }
   function applyRemote(r){ if(r&&r.data&&r.data.days&&(r.ts||0)>(state._ts||0)){ state=norm(r.data); state._ts=r.ts; persistLocal(); render(); renderEditors(); if(window.__jarvisRedraw) window.__jarvisRedraw(); sMsg("🛰 Synchronisiert (vom Server geladen)"); return true; } return false; }
   async function srvPull(){ if(!S()) return; try{ const {status,j}=await srvReq("GET"); if(status===401){ sMsg("🛰 Server: Gerät nicht mehr gekoppelt."); return; } if(status!==200) return;
+      let fresh=false; try{ fresh=localStorage.getItem("wa-srv-fresh")==="1"; localStorage.removeItem("wa-srv-fresh"); }catch(e){}
+      if(fresh&&j&&j.data&&j.data.days){ state._ts=0; }
       if(!applyRemote(j)){ if((state._ts||0)>(j.ts||0)) srvPush(true); else sMsg("🛰 Synchronisiert ✓"); } }catch(e){ sMsg("🛰 Server gerade nicht erreichbar."); } }
   async function srvPush(now){ if(!S()) return; if(!now){ clearTimeout(srvTimer); srvTimer=setTimeout(()=>srvPush(true),1200); return; }
     if(srvBusy){ srvAgain=true; return; } srvBusy=true;
