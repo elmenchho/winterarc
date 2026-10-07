@@ -1708,7 +1708,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     const AUD=new Audio(); AUD.preload="auto"; AUD.volume=0.8; let premium=false, audUnlocked=false;
     function premiumOn(){ try{ return premium&&localStorage.getItem(LS+"-jvvoicename")!=="__device"&&!(localStorage.getItem(LS+"-jvvoicename")||"").length; }catch(e){ return premium; } }
     let speakGen=0;
-    function chunks(t){ const out=[]; let cur=""; (t.match(/[^.!?;:]+[.!?;:]*\s*/g)||[t]).forEach(p=>{ if((cur+p).length>230&&cur){ out.push(cur.trim()); cur=""; } cur+=p; }); if(cur.trim()) out.push(cur.trim()); return out; }
+    function chunks(t){ const out=[]; let cur=""; (t.match(/[^.!?;:]+[.!?;:]*\s*/g)||[t]).forEach(p=>{ const lim=out.length?230:110; if((cur+p).length>lim&&cur.trim().length>15){ out.push(cur.trim()); cur=""; } cur+=p; }); if(cur.trim()) out.push(cur.trim()); return out; }
     async function ttsBlob(S,text){ const r=await fetch(S.url+"/api/tts",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({text})}); if(!r.ok){ const j=await r.json().catch(()=>({})); const m=String(j.error||("Fehler "+r.status)); if(Date.now()-(J.ttsErrAt||0)>20000){ J.ttsErrAt=Date.now(); toast(/quota|credit|limit/i.test(m)?"ElevenLabs-Guthaben leer – darum Ersatzstimme.":"Stimme: "+m.slice(0,110)); } throw new Error("tts "+r.status); } return URL.createObjectURL(await r.blob()); }
     function playUrl(url){ return new Promise((res,rej)=>{ AUD.onended=()=>{URL.revokeObjectURL(url);res();}; AUD.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("play"));}; AUD.src=url; AUD.play().catch(rej); }); }
     async function speakPremium(text){
@@ -1846,7 +1846,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function heard(text){ // settled words while talking
       if(!J.talk||J.busy||J.speaking||Date.now()<(J.quietUntil||0)) return;
       dbuf=(dbuf+text).replace(/^\s+/,""); inp.value=dbuf; grow();
-      clearTimeout(dTimer); dTimer=setTimeout(()=>{ const q=dbuf.trim(); dbuf=""; if(q&&J.talk&&!J.busy) ask(q); },1500);
+      clearTimeout(dTimer); dTimer=setTimeout(()=>{ const q=dbuf.trim(); dbuf=""; if(q&&J.talk&&!J.busy) ask(q); },1000);
     }
     // browser speech recognition (Chrome/Android/Safari when allowed)
     function listen(auto){
@@ -1890,7 +1890,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       mr.start(250); talkUI();
       const tick=()=>{ if(!REC.on) return; REC.an.getByteTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++){ const v=(buf[i]-128)/128; sum+=v*v; } const rms=Math.sqrt(sum/buf.length), now=performance.now();
         if(rms>0.04){ if(!spoke){ spoke=true; st.textContent="Ich höre…"; } lastLoud=now; }
-        if((spoke&&now-lastLoud>1300)||(!spoke&&now-t0>15000)||now-t0>45000||!J.talk||J.speaking){ try{mr.stop();}catch(e){} return; }
+        if((spoke&&now-lastLoud>850)||(!spoke&&now-t0>15000)||now-t0>45000||!J.talk||J.speaking){ try{mr.stop();}catch(e){} return; }
         REC.raf=requestAnimationFrame(tick); };
       REC.raf=requestAnimationFrame(tick);
     }
