@@ -1709,10 +1709,10 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function premiumOn(){ try{ return premium&&localStorage.getItem(LS+"-jvvoicename")!=="__device"&&!(localStorage.getItem(LS+"-jvvoicename")||"").length; }catch(e){ return premium; } }
     let speakGen=0;
     function chunks(t){ const out=[]; let cur=""; (t.match(/[^.!?;:]+[.!?;:]*\s*/g)||[t]).forEach(p=>{ if((cur+p).length>230&&cur){ out.push(cur.trim()); cur=""; } cur+=p; }); if(cur.trim()) out.push(cur.trim()); return out; }
-    async function ttsBlob(S,text){ const r=await fetch(S.url+"/api/tts",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({text})}); if(!r.ok) throw new Error("tts "+r.status); return URL.createObjectURL(await r.blob()); }
+    async function ttsBlob(S,text){ const r=await fetch(S.url+"/api/tts",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+S.token},body:JSON.stringify({text})}); if(!r.ok){ const j=await r.json().catch(()=>({})); const m=String(j.error||("Fehler "+r.status)); if(Date.now()-(J.ttsErrAt||0)>20000){ J.ttsErrAt=Date.now(); toast(/quota|credit|limit/i.test(m)?"ElevenLabs-Guthaben leer – darum Ersatzstimme.":"Stimme: "+m.slice(0,110)); } throw new Error("tts "+r.status); } return URL.createObjectURL(await r.blob()); }
     function playUrl(url){ return new Promise((res,rej)=>{ AUD.onended=()=>{URL.revokeObjectURL(url);res();}; AUD.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("play"));}; AUD.src=url; AUD.play().catch(rej); }); }
     async function speakPremium(text){
-      const S=srv(); if(!S) return false;
+      const S=srv(); if(!S){ if(Date.now()-(J.ttsErrAt||0)>20000){ J.ttsErrAt=Date.now(); toast("Nicht mit Server verbunden – darum Ersatzstimme."); } return false; }
       const parts=chunks(text), gen=++speakGen;
       let next; try{ next=ttsBlob(S,parts[0]); await next.then(u=>{ next=Promise.resolve(u); }); }catch(e){ return false; }
       J.speaking=true; orb.classList.add("speak"); st.textContent="Jarvis spricht…";
@@ -1744,6 +1744,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       if(!(J.voice||J.talk)||!text){ if(J.talk) speakDone(); return; }
       text=sayable(text);
       if(premiumOn()){ speakPremium(text.replace(/\[[^\]]*\]/g,"")).then(ok=>{ if(!ok) speakDevice(text); }); return; }
+      if(Date.now()-(J.ttsErrAt||0)>20000){ J.ttsErrAt=Date.now(); toast(srv()?(premium?"Gerätestimme gewählt – im Stimmen-Menü ★ wählen.":"Server-Stimme nicht aktiv – Ersatzstimme."):"Nicht mit Server verbunden – Ersatzstimme."); }
       speakDevice(text);
     }
     function speakDevice(text){
@@ -2035,7 +2036,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
         fetch(S.url+"/api/push/test",{method:"POST",headers:{authorization:"Bearer "+S.token}}).catch(()=>{});
       }catch(e){ toast("Push ging nicht. App vom Homescreen öffnen und nochmal."); b.textContent="🔔 Push an"; }
     };
-    async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; fillVoices(); loadElVoices(); }catch(e){} }
+    async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; if(premium){ try{ localStorage.removeItem(LS+"-jvvoicename"); }catch(e){} } else toast("Server-Stimme nicht eingerichtet."); fillVoices(); loadElVoices(); }catch(e){ toast("Server nicht erreichbar – Ersatzstimme."); } }
     function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp auf 🎙 und rede.":"Eigenes Gehirn aktiv. Tipp auf 🎙 und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; $("jvDev").hidden=!srv(); if(srv()&&/github\.io$/.test(location.hostname)) $("jvHint").textContent="🛰 Verbunden. Neu: Jarvis hat eine eigene Adresse – tipp auf 📲 Gerät."; }
     $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
