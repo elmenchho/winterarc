@@ -1704,7 +1704,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     function setBusy(b,txt){J.busy=b; orb.classList.toggle("busy",b); $("jvStop").hidden=!b; $("jvSend").hidden=b; st.textContent=txt||(b?"Denke nach…":"Online. Bereit, Boss."); if(!b) talkUI();}
 
     J.speaking=false;
-    function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking){ if(REC.stream) earListen(); else listen(true); } },400); }
+    function speakDone(){ J.speaking=false; J.quietUntil=Date.now()+700; orb.classList.remove("speak"); talkUI(); if(J.talk&&!J.dict) setTimeout(()=>{ if(J.talk&&!J.busy&&!J.speaking){ if(canServerEar()) earStart().catch(()=>{}); else listen(true); } },400); }
     const AUD=new Audio(); AUD.preload="auto"; let premium=false, audUnlocked=false;
     function premiumOn(){ try{ return premium&&localStorage.getItem(LS+"-jvvoicename")!=="__device"&&!(localStorage.getItem(LS+"-jvvoicename")||"").length; }catch(e){ return premium; } }
     let speakGen=0;
@@ -1715,7 +1715,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       const S=srv(); if(!S){ if(Date.now()-(J.ttsErrAt||0)>20000){ J.ttsErrAt=Date.now(); toast("Nicht mit Server verbunden – darum Ersatzstimme."); } return false; }
       const parts=chunks(text), gen=++speakGen;
       let next; try{ next=ttsBlob(S,parts[0]); await next.then(u=>{ next=Promise.resolve(u); }); }catch(e){ return false; }
-      J.speaking=true; orb.classList.add("speak"); st.textContent="Jarvis spricht…";
+      micRelease(); J.speaking=true; orb.classList.add("speak"); st.textContent="Jarvis spricht…";
       (async()=>{
         for(let i=0;i<parts.length;i++){
           if(gen!==speakGen) return;
@@ -1866,6 +1866,8 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     // ---- Zuhören über deinen Server (ElevenLabs) ----
     const REC={stream:null,ctx:null,an:null,mr:null,chunks:[],raf:0,on:false};
     function canServerEar(){ return !!(srv()&&premium&&window.MediaRecorder&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia); }
+    // Mikro freigeben, solange Jarvis spricht (sonst schaltet macOS/AirPods auf schlechten Telefon-Ton -> Knacken)
+    function micRelease(){ try{ REC.mr&&REC.mr.state!=="inactive"&&REC.mr.stop(); }catch(e){} REC.on=false; if(REC.stream){ REC.stream.getTracks().forEach(t=>t.stop()); REC.stream=null; } if(REC.ctx){ try{REC.ctx.close();}catch(e){} REC.ctx=null; } }
     async function earStart(){
       if(!REC.stream){ REC.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
       if(!REC.ctx){ REC.ctx=new (window.AudioContext||window.webkitAudioContext)(); const src=REC.ctx.createMediaStreamSource(REC.stream); REC.an=REC.ctx.createAnalyser(); REC.an.fftSize=1024; src.connect(REC.an); }
