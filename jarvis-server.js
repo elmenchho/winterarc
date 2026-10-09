@@ -167,6 +167,11 @@ async function ttsBuffer(text) {
   const ev = v.startsWith("edge:") ? v.slice(5) : EDGE_VOICES[0].id.slice(5);
   return edgeTts(text, ev);
 }
+function memoryBlock() {
+  const mem = load("memory", []); if (!mem.length) return "";
+  const by = {}; for (const m of mem) (by[m.cat] = by[m.cat] || []).push("- " + m.t + " [" + m.id + "]");
+  return "\n\nDEIN GEDÄCHTNIS (was du dir dauerhaft über ihn gemerkt hast – nutze es natürlich, ohne es aufzuzählen):\n" + Object.entries(by).map(([k, v]) => k.toUpperCase() + ":\n" + v.join("\n")).join("\n");
+}
 async function greetText() {
   const b = berlin(), h = +b.hm.slice(0, 2);
   const fallback = (h < 11 ? "Guten Morgen" : h < 18 ? "Willkommen zurück" : "Guten Abend") + ", Sir. Alle Systeme sind online.";
@@ -372,13 +377,20 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/push/test" && req.method === "POST") {
       const n = await proactive("Test: Begrüße den Boss kurz und sag, dass Push jetzt läuft."); return send(res, 200, { sent: n });
     }
+    if (url.pathname === "/api/memory" && req.method === "GET") return send(res, 200, { items: load("memory", []) });
+    if (url.pathname === "/api/memory" && req.method === "POST") {
+      const b = await body(req), mem = load("memory", []);
+      if (b.add) { const t = String(b.add).replace(/\s+/g, " ").trim().slice(0, 300); if (t && !mem.some(x => x.t.toLowerCase() === t.toLowerCase())) mem.push({ id: crypto.randomBytes(4).toString("hex"), t, cat: String(b.cat || "allgemein").slice(0, 30), at: Date.now() }); }
+      if (b.forget) { const q = String(b.forget).toLowerCase(); for (let i = mem.length - 1; i >= 0; i--) if (mem[i].id === b.forget || mem[i].t.toLowerCase().includes(q)) mem.splice(i, 1); }
+      save("memory", mem.slice(-400)); return send(res, 200, { ok: true, count: mem.length });
+    }
     if (url.pathname === "/api/claude" && req.method === "POST") {
       if (limited("claude:" + dev.id, 60, 600e3)) return send(res, 429, { error: "Kurz Pause, Boss." });
       const b = await body(req);
       const payload = {
         model: MODELS.includes(b.model) ? b.model : MODELS[0],
         max_tokens: Math.min(+b.max_tokens || 700, MAX_TOKENS),
-        system: typeof b.system === "string" ? b.system.slice(0, 200000) : undefined,
+        system: (typeof b.system === "string" ? b.system.slice(0, 200000) : "") + memoryBlock(),
         messages: Array.isArray(b.messages) ? b.messages.slice(-40) : [],
         tools: Array.isArray(b.tools) ? b.tools.slice(0, 16) : undefined
       };
