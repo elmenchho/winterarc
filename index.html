@@ -746,7 +746,7 @@ img{max-width:100%}
     </div>
     <div class="jv-row">
       <span id="jvHint">Tipp auf 🎙 und rede einfach.</span>
-      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvPush" type="button" hidden>🔔 Push an</button><button id="jvDev" type="button" hidden>📲 Gerät</button><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
+      <span style="display:flex;gap:6px"><button id="jvVoice" aria-pressed="false" aria-label="Sprachausgabe">🔈 Aus</button><select id="jvVoiceSel" aria-label="Stimme wählen" hidden></select><button id="jvPush" type="button" hidden>🔔 Push an</button><button id="jvDev" type="button" hidden>📲 Gerät</button><button id="jvHk" type="button" hidden>⌚ Health</button><button id="jvKeyOff" type="button" hidden>Verbindung</button><button id="jvClear">Neu</button></span>
     </div>
     <div class="jv-log" id="jvLog" aria-live="polite"></div>
     <div class="jv-off" id="jvOff" hidden></div>
@@ -1082,7 +1082,7 @@ img{max-width:100%}
   function renderFocus(){
     const el=$("focusBar"), isToday=sel===todayIdx(), P=$("pHeute");
     if(!isToday){ el.hidden=true; P.classList.remove("clean"); return; } el.hidden=false;
-    { const d=todayIdx(), dd=state.days[d]||{}, h=dd.h||{}, hn=HABITS.filter(x=>h[x.id]).length, ft=foodTotals(d), g=state.settings, gs=goalSaved();
+    { const d=todayIdx(), dd=state.days[d]||{}, h=dd.h||{}, hn=HABITS.filter(x=>h[x.id]).length, ft0=foodTotals(d), ft={k:Math.max(ft0.k,(dd.hk&&dd.hk.kcal)||0),p:Math.max(ft0.p,(dd.hk&&dd.hk.protein)||0)}, g=state.settings, gs=goalSaved();
       const bar=v=>'<i><em style="width:'+Math.max(0,Math.min(100,Math.round(v*100)))+'%"></em></i>';
       $("dayStrip").innerHTML='<div class="ds"><b>'+hn+'/'+HABITS.length+'</b><span>Haken</span>'+bar(hn/HABITS.length)+'</div>'+
         '<div class="ds"><b>'+Math.round(ft.p)+' g</b><span>Eiweiß</span>'+bar(ft.p/(g.protein||160))+'</div>'+
@@ -1824,6 +1824,7 @@ img{max-width:100%}
         "GERADE (Fokus auf der Startseite): "+(curFocus()?((FOCUS[curFocus().k]||FOCUS.frei).l+(curFocus().what?" – "+curFocus().what:"")+" seit "+new Date(curFocus().at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})):"nichts gesetzt"),
          "TAGESPLAN-SLOTS:\n"+slots,
         "OFFENE TO-DOS:\n"+todos,
+        "APPLE HEALTH HEUTE: "+(dd.hk?["Schritte "+(dd.hk.steps??"–"),"Schlaf "+(dd.hk.sleep??"–")+" h","Training "+(dd.hk.workout??"–")+" Min","aktive kcal "+(dd.hk.active??"–"),"laut Yazio "+(dd.hk.kcal??"–")+" kcal / "+(dd.hk.protein??"–")+" g Eiweiß"].join(", "):"noch keine Daten"),
         "ESSEN HEUTE: "+ft.k+"/"+g.kcal+" kcal, "+ft.p+"/"+g.protein+" g Eiweiß. Gegessen: "+food+". Ziel: Muskelaufbau + Bauch weg, 3 Mahlzeiten. Isst NICHT: Zwiebeln, Salat, Ketchup, Thunfisch, Linsen; Fisch nur Fischstäbchen. Mag Hähnchen, Kartoffeln, Spinat, Gemüse, Mozzarella.",
         "GELD: Konto "+B.konto.toFixed(2)+" €, Bargeld "+B.cash.toFixed(2)+" €. Monat: Fixkosten "+fixed+" €, vom Konto ausgegeben "+spent.toFixed(2)+" €, bar "+spentBar.toFixed(2)+" €"+(left!=null?", übrig "+left.toFixed(2)+" €":", Einkommen nicht eingetragen")+". Schulden: "+debts+". Letzte Buchungen: "+(last||"keine")+".",
         "ZIEL: "+state.goal.name+" für "+state.goal.target+" € bis "+state.goal.deadline+", gespart "+gs+" €.",
@@ -2192,6 +2193,20 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       if(window.__srvSync) window.__srvSync(true);
       return {ok:true};
     }
+    $("jvHk").onclick=async()=>{
+      const S=srv(); if(!S) return; const o=$("jvOff");
+      if(!confirm("Neuen Apple-Health-Schlüssel erstellen? Ein alter Kurzbefehl funktioniert danach nicht mehr.")) return;
+      try{ const r=await fetch(S.url+"/api/health/key",{method:"POST",headers:{authorization:"Bearer "+S.token}}); const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j.key){ toast(r.status===404?"Server-Update nötig.":"Ging nicht"); return; }
+        const u=S.url+"/api/health/in"; o.hidden=false;
+        o.innerHTML='<b style="color:var(--fg)">⌚ Apple Health → Jarvis</b><br>Diese zwei Werte brauchst du im Kurzbefehl. Nur hier sichtbar – nicht teilen.<br>'+
+          '<small>Adresse (URL)</small><input '+INP+' readonly value="'+esc(u)+'" id="hkU"><button class="btn sm" type="button" id="hkUc">Adresse kopieren</button>'+
+          '<br><small>Schlüssel (Header „Authorization“)</small><input '+INP+' readonly value="Bearer '+esc(j.key)+'" id="hkK"><button class="btn sm" type="button" id="hkKc">Schlüssel kopieren</button>'+
+          '<div style="margin-top:10px"><button class="btn sm" type="button" id="hkX">Fertig</button></div>';
+        const cp=(id)=>{ try{ navigator.clipboard.writeText($(id).value); toast("Kopiert"); }catch(e){ $(id).select(); } };
+        $("hkUc").onclick=()=>cp("hkU"); $("hkKc").onclick=()=>cp("hkK"); $("hkX").onclick=()=>{ o.hidden=true; o.innerHTML=""; };
+      }catch(e){ toast("Server nicht erreichbar"); }
+    };
     $("jvDev").onclick=async()=>{
       const S=srv(); if(!S) return; const o=$("jvOff");
       try{
@@ -2261,7 +2276,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       }catch(e){ toast("Push ging nicht. App vom Homescreen öffnen und nochmal."); b.textContent="🔔 Push an"; }
     };
     async function checkPremium(){ const S=srv(); if(!S) return; try{ const r=await fetch(S.url+"/api/tts/status",{headers:{authorization:"Bearer "+S.token}}); const j=await r.json(); premium=!!j.ok; if(premium){ try{ localStorage.removeItem(LS+"-jvvoicename"); }catch(e){} } else toast("Server-Stimme nicht eingerichtet."); fillVoices(); loadElVoices(); }catch(e){ toast("Server nicht erreichbar – Ersatzstimme."); } }
-    function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp auf 🎙 und rede.":"Eigenes Gehirn aktiv. Tipp auf 🎙 und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; $("jvDev").hidden=!srv(); if(srv()&&/github\.io$/.test(location.hostname)) $("jvHint").textContent="🛰 Verbunden. Neu: Jarvis hat eine eigene Adresse – tipp auf 📲 Gerät."; }
+    function useApi(){ setTimeout(pushUi,0); setTimeout(checkPremium,0); J.sample=apiSample(); J.tools=true; J.api=true; $("jvHint").textContent=srv()?"🛰 Über deinen Server verbunden. Tipp auf 🎙 und rede.":"Eigenes Gehirn aktiv. Tipp auf 🎙 und rede."; st.textContent="Online. Bereit, Boss."; $("jvKeyOff").hidden=false; $("jvDev").hidden=!srv(); $("jvHk").hidden=!srv(); if(srv()&&/github\.io$/.test(location.hostname)) $("jvHint").textContent="🛰 Verbunden. Neu: Jarvis hat eine eigene Adresse – tipp auf 📲 Gerät."; }
     $("jvKeyOff").onclick=()=>{ if(!confirmKey()) return; setApiKey(""); setSrv(null); J.sample=null; J.api=false; $("jvKeyOff").hidden=true; keySetup(); };
     let keyArm=0; function confirmKey(){ if(Date.now()-keyArm<3000) return true; keyArm=Date.now(); toast("Nochmal tippen zum Entfernen"); return false; }
     function offline(){ if(!window.claude||!window.claude.use){
