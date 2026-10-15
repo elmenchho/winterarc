@@ -289,6 +289,28 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { token, id });
     }
 
+    // Apple Health (iPhone-Kurzbefehl) – eigener Schlüssel, darf NUR Gesundheitsdaten schreiben
+    if (url.pathname === "/api/health/in" && req.method === "POST") {
+      const m = /^Bearer (hk_[A-Za-z0-9_-]{20,})$/.exec(req.headers.authorization || "") || /^(hk_[A-Za-z0-9_-]{20,})$/.exec(String(url.searchParams.get("k") || ""));
+      const hk = load("healthkey", null);
+      if (!m || !hk || !crypto.timingSafeEqual(Buffer.from(hk.h), Buffer.from(sha(m[1])))) { limited("bad:" + ip, 30, 600e3); return send(res, 401, { error: "Schlüssel falsch." }); }
+      if (limited("hk:" + ip, 60, 3600e3)) return send(res, 429, { error: "Zu oft." });
+      let b = {}; try { b = await body(req); } catch { return send(res, 400, { error: "kein JSON" }); }
+      const n = v => { let t = String(v == null ? "" : v).replace(/[^0-9.,\-]/g, ""); if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, ""); t = t.replace(",", "."); const x = parseFloat(t); return isFinite(x) ? Math.round(x * 10) / 10 : null; };
+      const hkData = { steps: n(b.steps), sleep: n(b.sleep), kcal: n(b.kcal), protein: n(b.protein), active: n(b.active), workout: n(b.workout), weight: n(b.weight), at: Date.now() };
+      if (hkData.sleep != null && hkData.sleep > 24) hkData.sleep = Math.round(hkData.sleep / 6) / 10; // Minuten -> Stunden
+      const bz = berlin(), day = Math.round((Date.UTC(bz.y, bz.m - 1, bz.d) - Date.UTC(2026, 9, 7)) / 864e5) + 1;
+      const st = load("state", { ts: 0, data: null }); if (!st.data) return send(res, 409, { error: "Noch keine App-Daten." });
+      const D = st.data; D.days = D.days || {}; const dd = D.days[day] = D.days[day] || { h: {} }; dd.h = dd.h || {};
+      dd.hk = Object.assign(dd.hk || {}, Object.fromEntries(Object.entries(hkData).filter(([, v]) => v != null)));
+      if (dd.hk.steps >= 8000) dd.h.steps = true;
+      if (dd.hk.sleep >= 7) dd.h.sleep = true;
+      if (dd.hk.protein >= ((D.settings && D.settings.protein) || 160)) dd.h.protein = true;
+      if (dd.hk.workout >= 25) dd.h.train = true;
+      if (dd.hk.weight && !dd.weight) dd.weight = dd.hk.weight;
+      const ts = Date.now(); D._ts = ts; save("state", { ts, data: D, by: "health" });
+      return send(res, 200, { ok: true, tag: day, gespeichert: dd.hk });
+    }
     const dev = auth(req);
     if (!dev) { limited("bad:" + ip, 30, 600e3); return send(res, 401, { error: "Nicht gekoppelt." }); }
     if (limited("dev:" + dev.id, 240, 600e3)) return send(res, 429, { error: "Zu viele Anfragen." });
@@ -376,6 +398,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/push/test" && req.method === "POST") {
       const n = await proactive("Test: Begrüße den Boss kurz und sag, dass Push jetzt läuft."); return send(res, 200, { sent: n });
+    }
+    if (url.pathname === "/api/health/key" && req.method === "POST") {
+      const key = "hk_" + crypto.randomBytes(24).toString("base64url"); save("healthkey", { h: sha(key), at: Date.now(), by: dev.id });
+      return send(res, 200, { key, url: "/api/health/in" });
     }
     if (url.pathname === "/api/memory" && req.method === "GET") return send(res, 200, { items: load("memory", []) });
     if (url.pathname === "/api/memory" && req.method === "POST") {
