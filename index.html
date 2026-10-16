@@ -367,7 +367,43 @@ details.setup .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px
 .jv-talk{border:0;border-radius:999px;padding:13px 22px;font:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(135deg,#1d6fd6,#3db2ff);box-shadow:0 8px 24px -10px rgba(61,178,255,.8)}
 .jv-talk.on{background:linear-gradient(135deg,#c2410c,#ffb020);color:#1a1205;box-shadow:0 8px 24px -10px rgba(255,176,32,.8)}
 #tJarvis{display:none!important}
+.ht-orb{pointer-events:none}
 .ht-set{display:block;margin:18px auto 0;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline}
+.kb-h{display:flex;justify-content:space-between;align-items:baseline;margin:6px 2px 12px}
+.kb-d{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.kb-card{border:1px solid rgba(61,178,255,.3);border-radius:18px;padding:14px 16px;margin-bottom:12px;background:linear-gradient(180deg,#05101c,#03070d)}
+.kb-t{display:flex;justify-content:space-between;align-items:center;font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;color:#5fc4ff;text-transform:uppercase}
+.kb-big{font-family:var(--f-mono);font-size:34px;color:#e6f6ff;margin:6px 0 2px;line-height:1.1}
+.kb-big small{font-size:14px;color:#7fbfe6;margin-left:4px}
+.kb-sub{color:var(--muted);font-size:13px}
+.kb-bar{height:6px;border-radius:6px;background:rgba(255,255,255,.08);margin:8px 0 2px;overflow:hidden}.kb-bar i{display:block;height:100%;border-radius:6px}
+.kb-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.kb-row input{width:110px;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.kb-row button,.kb-btn{border:1px solid rgba(61,178,255,.4);background:rgba(61,178,255,.12);color:#cfeeff;border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;font-weight:700}
+.kb-btn.on{background:#38e0a6;color:#04120c;border-color:#38e0a6}
+.kb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.kb-grid div{border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+.kb-grid b{display:block;font-family:var(--f-mono);font-size:18px;color:#e6f6ff}.kb-grid span{font-size:11px;color:var(--muted)}
+.kb-food{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.kb-food div{display:flex;justify-content:space-between;font-size:14px;border-bottom:1px solid var(--line);padding:4px 0}
+.kb-log{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.kb-exr{border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.kb-exh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}.kb-exh b{font-size:15px}.kb-exh span{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.kb-set{display:grid;grid-template-columns:20px 1fr auto 1fr auto 40px;gap:6px;align-items:center;margin:4px 0}
+.kb-set .sn{font-family:var(--f-mono);font-size:12px;color:#5fc4ff}.kb-set .x{font-size:11px;color:var(--muted);background:none!important;border:0!important;padding:0!important;min-width:0!important}
+.kb-set input{width:100%;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+.kb-set .ck{width:40px;height:36px;border-radius:10px;border:1px solid rgba(61,178,255,.4);background:transparent;color:#04120c;font-weight:900}
+.kb-set.ok .ck{background:#38e0a6;border-color:#38e0a6}.kb-set.ok input{opacity:.6}
+.kb-setb{display:flex;gap:8px;margin-top:4px}.kb-setb button{background:none;border:0;color:#5fc4ff;font:inherit;font-size:13px;padding:2px 0}
+.kb-ex{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.kb-exi{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:12px;padding:6px 10px}
+.kb-exi.on{border-color:#38e0a6}.kb-exi .stp{display:flex;align-items:center;gap:10px}
+.kb-exi .stp button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font-size:18px}
+.kb-exi .stp b{font-family:var(--f-mono);min-width:26px;text-align:center}
+.kb-week{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+.kb-week th{font-family:var(--f-mono);font-size:10px;color:#7fbfe6;font-weight:400;text-align:center;padding:4px 2px}
+.kb-week td{text-align:center;padding:6px 2px;border-top:1px solid var(--line);color:#dbe8f5}
+.kb-week td:first-child{text-align:left;color:var(--muted)}
 .hud{position:relative;margin:0 0 14px;padding:16px 16px 14px;border-radius:20px;overflow:hidden;background:radial-gradient(90% 60% at 50% 45%,rgba(61,178,255,.16),transparent 70%),linear-gradient(180deg,#05101c,#03070d);border:1px solid rgba(61,178,255,.35);box-shadow:0 0 40px -18px #3db2ff,inset 0 0 60px -30px #3db2ff}
 .hud::before,.hud::after{content:"";position:absolute;width:22px;height:22px;border:2px solid #3db2ff;opacity:.9}
 .hud::before{top:8px;left:8px;border-right:0;border-bottom:0}
@@ -478,6 +514,7 @@ img{max-width:100%}
 <div class="app">
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tHeute" data-p="pHeute" aria-selected="true">Heute</button>
+    <button class="tab" role="tab" id="tKoerper" data-p="pKoerper" aria-selected="false">Körper</button>
     <button class="tab" role="tab" id="tEssen" data-p="pEssen" aria-selected="false">Essen</button>
     <button class="tab" role="tab" id="tRez" data-p="pRezepte" aria-selected="false">Rezepte</button>
     <button class="tab" role="tab" id="tShop" data-p="pEinkauf" aria-selected="false">Einkauf</button>
@@ -488,7 +525,7 @@ img{max-width:100%}
   <section class="hud" id="homeTop">
     <div class="hud-grid"></div>
     <div class="hud-top">
-      <div><div class="hud-k">J.A.R.V.I.S · <span id="hudSys">ONLINE</span></div><div class="ht-time" id="htTime">--:--</div><div class="ht-date" id="htDate"></div></div>
+      <div><div class="hud-k"><span id="hudSys">WINTER ARC</span></div><div class="ht-time" id="htTime">--:--</div><div class="ht-date" id="htDate"></div></div>
       <div class="hud-tr"><div class="hud-k">PROTOKOLL</div><div class="hud-big" id="hudDay">1</div><div class="hud-k" id="hudDayOf">/ 274</div></div>
     </div>
     <div class="hud-core">
@@ -503,7 +540,7 @@ img{max-width:100%}
       </svg>
       <button class="jv-orb ht-orb" id="htOrb" type="button" aria-label="Mit Jarvis reden"><i></i><i></i><i></i><b></b></button>
     </div>
-    <div class="hjv-t" id="htDay">TIPP AUF DEN KERN · SPRICH, BOSS</div>
+    <div class="hjv-t" id="htDay"></div>
     <div class="hud-stats">
       <div><i class="d1"></i><span>HAKEN</span><b id="hsHab">0/15</b></div>
       <div><i class="d2"></i><span>EIWEISS</span><b id="hsPro">0 g</b></div>
@@ -657,6 +694,13 @@ img{max-width:100%}
   <button class="sos" id="sos">Ich will aufgeben</button>
   </div>
 
+  <div class="panel" id="pKoerper" hidden>
+    <div class="kb-h"><span class="hud-k">KÖRPER · HEUTE</span><span class="kb-d" id="kbDate"></span></div>
+    <section class="kb-card" id="kbSleep"></section>
+    <section class="kb-card" id="kbSport"></section>
+    <section class="kb-card" id="kbFood"></section>
+    <section class="kb-card" id="kbWeek"></section>
+  </div>
   <div class="panel" id="pEssen" hidden>
     <nav class="daynav">
       <button class="iconbtn" id="fPrev" aria-label="Vorheriger Tag">‹</button>
@@ -1131,14 +1175,82 @@ img{max-width:100%}
   tickClock(); setInterval(tickClock,1000);
 
   // Blase auf der Startseite = Jarvis direkt hier (kein Tab-Wechsel)
-  $("htOrb").onclick=()=>{ const off=$("jvOff"); if(off&&!off.hidden){ $("tJarvis").click(); return; } const b=$("jvTalk"); if(b) b.click(); };
+  $("htOrb").onclick=()=>{}; // Jarvis pausiert
   try{ const jo=$("jvOrb"), js=$("jvSt"), ho=$("htOrb");
     const sync=()=>{ ["busy","listen","speak"].forEach(c=>ho.classList.toggle(c,jo.classList.contains(c))); const on=$("jvTalk").classList.contains("on"); ho.classList.toggle("on",on);
-      $("htDay").textContent=on||jo.classList.contains("busy")||jo.classList.contains("speak")?js.textContent:"TIPP AUF DEN KERN · SPRICH, BOSS"; };
+      $("htDay").textContent=on||jo.classList.contains("busy")||jo.classList.contains("speak")?js.textContent:""; };
     new MutationObserver(sync).observe(jo,{attributes:true,attributeFilter:["class"]});
     new MutationObserver(sync).observe(js,{childList:true,characterData:true,subtree:true});
     new MutationObserver(sync).observe($("jvTalk"),{attributes:true,attributeFilter:["class"]}); }catch(e){}
 
+
+
+  const EXTRAS=[{id:"sauna",ic:"🧖",n:"Sauna",st:10},{id:"solar",ic:"☀️",n:"Solarium",st:2},{id:"walk",ic:"🚶",n:"Spaziergang",st:10},{id:"cardio",ic:"🚴",n:"Cardio",st:5},{id:"stretch",ic:"🧘",n:"Dehnen",st:5}];
+  function lastSolar(d){ for(let x=d; x>=Math.max(1,d-7); x--){ const e=(state.days[x]||{}).extra||{}; if(e.solar) return d-x; } return null; }
+  function prevSets(name,d){ for(let x=d-1; x>=1; x--){ const L=((state.days[x]||{}).wlog||{})[name]; if(L&&L.some(z=>z.kg||z.r)) return L; } return null; }
+  function logHtml(d,w){
+    const L=((state.days[d]||{}).wlog)||{};
+    return '<div class="kb-log">'+w.ex.map(([name,spec],ei)=>{
+      const nSets=parseInt(spec,10)||3, sets=L[name]||Array.from({length:nSets},()=>({})), pv=prevSets(name,d), done=sets.filter(z=>z.ok).length;
+      return '<div class="kb-exr"><div class="kb-exh"><b>'+esc(name)+'</b><span>'+done+'/'+sets.length+' · '+esc(spec)+'</span></div>'+
+        sets.map((z,si)=>{ const p=pv&&pv[si]; return '<div class="kb-set'+(z.ok?' ok':'')+'"><span class="sn">'+(si+1)+'</span>'+
+          '<input type="number" inputmode="decimal" step="0.5" data-wk="'+ei+'" data-si="'+si+'" data-f="kg" value="'+(z.kg??'')+'" placeholder="'+(p&&p.kg?p.kg:'kg')+'"><span class="x">kg</span>'+
+          '<input type="number" inputmode="numeric" data-wk="'+ei+'" data-si="'+si+'" data-f="r" value="'+(z.r??'')+'" placeholder="'+(p&&p.r?p.r:'Wdh')+'"><span class="x">Wdh</span>'+
+          '<button type="button" class="ck" data-wok="'+ei+'" data-si="'+si+'">'+(z.ok?'✓':'')+'</button></div>'; }).join("")+
+        '<div class="kb-setb"><button type="button" data-wadd="'+ei+'">+ Satz</button>'+(sets.length>1?'<button type="button" data-wdel="'+ei+'">− Satz</button>':'')+'</div></div>';
+    }).join("")+'</div>';
+  }
+  function wl(d,ei){ const w=WORKOUTS[rot(d)], name=w.ex[ei][0], dd=ensure(d); dd.wlog=dd.wlog||{}; if(!dd.wlog[name]) dd.wlog[name]=Array.from({length:parseInt(w.ex[ei][1],10)||3},()=>({})); return dd.wlog[name]; }
+  function autoTrain(d){ const dd=ensure(d), w=WORKOUTS[rot(d)], L=dd.wlog||{}; const all=w.ex.every(([n])=>(L[n]||[]).length&&(L[n]||[]).every(z=>z.ok)); if(all){ dd.h=dd.h||{}; if(!dd.h.train){ dd.h.train=true; toast("Training komplett 💪"); } } }
+  document.addEventListener("change",e=>{ const t=e.target; if(!t.dataset||t.dataset.wk==null) return; const d=todayIdx(), L=wl(d,+t.dataset.wk), z=L[+t.dataset.si]; const v=parseFloat(String(t.value).replace(",",".")); z[t.dataset.f]=isFinite(v)?v:null; persist(); });
+  document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("button"); if(!b||!b.dataset) return; const d=todayIdx(); const D=b.dataset;
+    if(D.wok!=null){ const L=wl(d,+D.wok), z=L[+D.si]; const row=b.closest(".kb-set"); row.querySelectorAll("input").forEach(i=>{ const v=parseFloat(String(i.value||i.placeholder).replace(",",".")); if(isFinite(v)) z[i.dataset.f]=v; }); z.ok=!z.ok; autoTrain(d); persist(); render(); return; }
+    if(D.wadd!=null){ wl(d,+D.wadd).push({}); persist(); render(); return; }
+    if(D.wdel!=null){ wl(d,+D.wdel).pop(); persist(); render(); return; }
+    if(D.xu||D.xd){ const x=EXTRAS.find(q=>q.id===(D.xu||D.xd)), dd=ensure(d); dd.extra=dd.extra||{}; dd.extra[x.id]=Math.max(0,(dd.extra[x.id]||0)+(D.xu?x.st:-x.st)); persist(); render(); return; }
+  });
+  // ---------- Körper: Schlaf, Sport, Essen ----------
+  function hkOf(d){ return ((state.days[d]||{}).hk)||{}; }
+  function renderBody(){
+    if(!$("kbSleep")) return;
+    const d=todayIdx(), dd=state.days[d]||{}, h=dd.h||{}, hk=hkOf(d), g=state.settings, w=WORKOUTS[rot(d)];
+    const n=new Date(); $("kbDate").textContent=WD[n.getDay()]+", "+n.getDate()+". "+MO[n.getMonth()]+" · Tag "+d;
+    const bar=(v,c)=>'<div class="kb-bar"><i style="width:'+Math.max(0,Math.min(100,v*100))+'%;background:'+c+';box-shadow:0 0 10px '+c+'"></i></div>';
+    const sl=hk.sleep;
+    $("kbSleep").innerHTML='<div class="kb-t"><span>😴 Schlaf</span><span>'+(h.sleep?'✓ Ziel':'Ziel 7+ Std')+'</span></div>'+
+      '<div class="kb-big">'+(sl!=null?String(sl).replace(".",","):'–')+'<small>Std</small></div>'+bar((sl||0)/8,'#7a5cff')+
+      '<div class="kb-row"><input id="kbSlIn" type="number" inputmode="decimal" step="0.5" min="0" max="16" placeholder="z. B. 7,5"><button type="button" id="kbSlOk">Eintragen</button></div>'+
+      '<div class="kb-sub" style="margin-top:6px">Kommt automatisch von der Apple Watch, oder hier selbst eintragen.</div>';
+    const tr=!!h.train, rest=rot(d)===3;
+    $("kbSport").innerHTML='<div class="kb-t"><span>💪 Sport</span><span>'+(tr?'✓ erledigt':'offen')+'</span></div>'+
+      '<div class="kb-big" style="font-size:24px">'+esc(rest?"Pause · Spaziergang":w.name)+'</div>'+
+      '<div class="kb-sub">'+(rest?"30–60 Min locker gehen":w.ex.map(e=>e[0]).join(" · "))+'</div>'+
+      '<div class="kb-row"><button type="button" class="kb-btn'+(tr?' on':'')+'" id="kbTrain">'+(tr?'✓ Training erledigt':'Training erledigt?')+'</button></div>'+
+      '<div class="kb-grid"><div><b>'+(hk.steps!=null?Math.round(hk.steps).toLocaleString("de-DE"):'–')+'</b><span>Schritte</span></div><div><b>'+(hk.workout!=null?hk.workout:'–')+'</b><span>Training Min</span></div><div><b>'+(hk.active!=null?Math.round(hk.active):'–')+'</b><span>aktive kcal</span></div></div>'+
+      '<div class="kb-row"><input id="kbStIn" type="number" inputmode="numeric" min="0" step="100" placeholder="Schritte"><button type="button" id="kbStOk">Schritte eintragen</button><button type="button" id="kbWatch">⌚ Watch-Daten holen</button></div>'+
+      (rest?'':'<div class="kb-t" style="margin-top:14px"><span>🏋️ Übungen</span><span>kg × Wdh</span></div>'+logHtml(d,w))+
+      '<div class="kb-t" style="margin-top:14px"><span>✨ Extras</span><span>Minuten</span></div><div class="kb-ex">'+EXTRAS.map(x=>{ const v=((dd.extra||{})[x.id])||0; return '<div class="kb-exi'+(v?' on':'')+'"><span>'+x.ic+' '+x.n+'</span><span class="stp"><button type="button" data-xd="'+x.id+'">−</button><b>'+(v||'–')+'</b><button type="button" data-xu="'+x.id+'">+</button></span></div>'; }).join("")+'</div>'+
+      (lastSolar(d)!=null&&lastSolar(d)<2?'<div class="kb-sub" style="color:#ff7a3d">Solarium: letztes Mal vor '+(lastSolar(d)===0?'heute':lastSolar(d)+' Tag')+' – mindestens 48 Std Pause.</div>':'');
+    const ft0=foodTotals(d), k=Math.max(ft0.k,hk.kcal||0), pr=Math.max(ft0.p,hk.protein||0), food=dd.food||[];
+    $("kbFood").innerHTML='<div class="kb-t"><span>🍽 Gegessen</span><span>'+(pr>=(g.protein||160)?'✓ Eiweiß-Ziel':'')+'</span></div>'+
+      '<div class="kb-grid" style="grid-template-columns:1fr 1fr"><div><b>'+Math.round(k)+'</b><span>von '+g.kcal+' kcal</span></div><div><b>'+Math.round(pr)+' g</b><span>von '+g.protein+' g Eiweiß</span></div></div>'+
+      bar(k/(g.kcal||2800),'#ffb020')+bar(pr/(g.protein||160),'#38e0a6')+
+      '<div class="kb-food">'+(food.length?food.map(x=>'<div><span>'+esc(x.n)+'</span><span>'+Math.round(+x.k||0)+' kcal · '+Math.round(+x.p||0)+' g</span></div>').join(""):'<div class="kb-sub">Noch nichts eingetragen.</div>')+'</div>'+
+      ((hk.kcal||hk.protein)?'<div class="kb-sub" style="margin-top:6px">Yazio: '+(hk.kcal||0)+' kcal · '+(hk.protein||0)+' g</div>':'')+
+      '<div class="kb-row"><button type="button" id="kbFoodAdd">+ Essen eintragen</button></div>';
+    let rows=''; for(let x=Math.max(1,d-6); x<=d; x++){ const D=state.days[x]||{}, H=D.h||{}, K=hkOf(x), F=foodTotals(x), dt=dateOf(x);
+      rows+='<tr><td>'+WD[dt.getDay()].slice(0,2)+' '+dt.getDate()+'.</td><td>'+(K.sleep!=null?String(K.sleep).replace(".",","):'–')+'</td><td>'+(K.steps!=null?(K.steps/1000).toFixed(1).replace(".",",")+'k':'–')+'</td><td>'+(H.train?'✓':'–')+'</td><td>'+(Math.max(F.k,K.kcal||0)||'–')+'</td><td>'+(Math.round(Math.max(F.p,K.protein||0))||'–')+'</td></tr>'; }
+    $("kbWeek").innerHTML='<div class="kb-t"><span>📈 Letzte 7 Tage</span></div><table class="kb-week"><tr><th>Tag</th><th>Schlaf</th><th>Schritte</th><th>Sport</th><th>kcal</th><th>Eiweiß</th></tr>'+rows+'</table>';
+  }
+  document.addEventListener("click",e=>{
+    const id=e.target&&e.target.id; if(!id||!/^kb/.test(id)) return;
+    const d=todayIdx(), dd=ensure(d); dd.h=dd.h||{}; dd.hk=dd.hk||{};
+    if(id==="kbSlOk"){ const v=parseFloat(String($("kbSlIn").value).replace(",",".")); if(!isFinite(v)) return; dd.hk.sleep=Math.round(v*10)/10; dd.h.sleep=v>=7; persist(); render(); toast("Schlaf eingetragen"); }
+    if(id==="kbStOk"){ const v=parseInt($("kbStIn").value,10); if(!isFinite(v)) return; dd.hk.steps=v; if(v>=8000) dd.h.steps=true; persist(); render(); toast("Schritte eingetragen"); }
+    if(id==="kbTrain"){ dd.h.train=!dd.h.train; persist(); render(); }
+    if(id==="kbWatch"){ location.href="shortcuts://run-shortcut?name="+encodeURIComponent("Jarvis Health"); return; }
+    if(id==="kbFoodAdd"){ const t=$("tEssen"); if(t) t.click(); }
+  });
   function render(){
     const ti=todayIdx(), tc=clamp(ti);
     const date=dateOf(sel);
@@ -1207,7 +1319,7 @@ img{max-width:100%}
     }
     $("grid").innerHTML=g;
     if(!editing) renderWhy(); else $("mantra").innerHTML='<span>Satz für Tag '+sel+'</span>'+esc(MANTRAS[(sel-1)%MANTRAS.length]);
-    renderPlan(); renderTodos(); renderJournal(); renderGoal(); renderSupps(); renderFood(); renderMoney(); renderRecipes(); renderShop(); renderFocus();
+    renderPlan(); renderTodos(); renderJournal(); renderGoal(); renderSupps(); renderFood(); renderMoney(); renderRecipes(); renderShop(); renderFocus(); renderBody();
   }
 
 
@@ -2307,7 +2419,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
   // ---------- Tabs ----------
   function showTab(p){
     document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.p===p)));
-    ["pHeute","pEssen","pRezepte","pEinkauf","pGeld","pJarvis"].forEach(id=>$(id).hidden=id!==p);
+    ["pHeute","pKoerper","pEssen","pRezepte","pEinkauf","pGeld","pJarvis"].forEach(id=>$(id).hidden=id!==p);
     try{localStorage.setItem(LS+"-tab",p);}catch(e){}
   }
   document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{showTab(t.dataset.p); window.scrollTo(0,0);});
