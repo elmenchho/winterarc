@@ -511,7 +511,7 @@ img{max-width:100%}
       <div><i class="d4"></i><span>STREAK</span><b id="hsStreak">0</b></div>
     </div>
     <div class="hud-dir"><span class="hud-k">DIREKTIVE DES TAGES</span><p id="hqText"></p></div>
-    <button class="hud-more" id="hudMore" type="button">≡ MEHR</button>
+    
   </section>
   <section class="focusbar" id="focusBar" aria-live="polite"></section>
   <section class="daystrip" id="dayStrip"></section>
@@ -1062,7 +1062,7 @@ img{max-width:100%}
     abend:{ic:"🌙",l:"Abend",show:["journal","checkSect"]},
     frei:{ic:"⚡",l:"Frei",show:[]}
   };
-  let showAll=false;
+  let showAll=true; // App ohne Jarvis voll nutzbar: alles sichtbar
   function streakNow(){ const tc=clamp(todayIdx()); let k=0; for(let d=tc; d>=1; d--){ if(pct(d)===1) k++; else if(d===tc) continue; else break; } return k; }
   function guessKind(n){ n=String(n).toLowerCase();
     if(/gym|training|spaziergang/.test(n)) return "gym";
@@ -1072,7 +1072,7 @@ img{max-width:100%}
     if(/tagebuch|schlafen|abend-check|handy weg/.test(n)) return "abend";
     return "frei"; }
   function curFocus(){ const f=state.focus; if(!f||f.day!==todayIdx()||Date.now()-(f.at||0)>8*3600e3||f.k==="frei"&&!f.what) return null; return f; }
-  function setFocus(k,what,sid){ state.focus=k?{k:FOCUS[k]?k:"frei",what:String(what||"").slice(0,80),sid:sid||null,at:Date.now(),day:todayIdx()}:null; showAll=false; persist(); render(); }
+  function setFocus(k,what,sid){ state.focus=k?{k:FOCUS[k]?k:"frei",what:String(what||"").slice(0,80),sid:sid||null,at:Date.now(),day:todayIdx()}:null; persist(); render(); }
   function nextItem(){ const d=todayIdx(), S=daySlots(d), sd=(state.days[d]||{}).sd||{}, cs=curSlot(), ci=SLOTS.findIndex(s=>s[0]===cs);
     for(let i=ci;i<SLOTS.length;i++){ const it=(S[SLOTS[i][0]]||[]).find(x=>!sd[x.id]); if(it) return {it,slot:SLOTS[i][1]}; } return null; }
   function finishFocus(){ const f=curFocus(), d=todayIdx(), dd=ensure(d); dd.sd=dd.sd||{}; dd.h=dd.h||{};
@@ -1104,11 +1104,11 @@ img{max-width:100%}
           :'<div class="fw">Alles erledigt 💪</div><div class="fs">Sag Jarvis, was du jetzt machst.</div>');
     }
     if(el._sw) html+='<div class="fk">'+Object.keys(FOCUS).map(k=>'<button data-fk="'+k+'" type="button">'+FOCUS[k].ic+' '+FOCUS[k].l+'</button>').join("")+'</div>';
-    html+='<button class="fall" data-fa="all" type="button">'+(showAll?"Weniger zeigen":"Alles zeigen")+'</button>';
+    
     if(showAll) html+='<button class="ht-set" data-fa="jvset" type="button">⚙ Jarvis-Einstellungen (Push, Geräte, Verbindung)</button>';
     el.innerHTML=html;
     // aufräumen: nur zeigen, was gerade gebraucht wird
-    el.hidden=!f&&!showAll; if($("hudMore")) $("hudMore").textContent=showAll?"× WENIGER":"≡ MEHR";
+    el.hidden=!f; 
     const keep=new Set(["homeTop","focusBar"].concat(f?(FOCUS[f.k]||FOCUS.frei).show:[]));
     [...P.children].forEach(c=>c.classList.toggle("fhide",!keep.has(c.id)));
     P.classList.toggle("clean",!showAll);
@@ -1129,7 +1129,7 @@ img{max-width:100%}
     t.innerHTML=String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0")+'<small>'+String(n.getSeconds()).padStart(2,"0")+'</small>';
     $("htDate").textContent=WD[n.getDay()]+", "+n.getDate()+". "+MO[n.getMonth()]+" "+n.getFullYear(); }
   tickClock(); setInterval(tickClock,1000);
-  $("hudMore").onclick=()=>{ showAll=!showAll; renderFocus(); };
+
   // Blase auf der Startseite = Jarvis direkt hier (kein Tab-Wechsel)
   $("htOrb").onclick=()=>{ const off=$("jvOff"); if(off&&!off.hidden){ $("tJarvis").click(); return; } const b=$("jvTalk"); if(b) b.click(); };
   try{ const jo=$("jvOrb"), js=$("jvSt"), ho=$("htOrb");
