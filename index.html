@@ -699,6 +699,7 @@ img{max-width:100%}
 
   <div class="panel" id="pKoerper" hidden>
     <div class="kb-h"><span class="hud-k">KÖRPER · HEUTE</span><span class="kb-d" id="kbDate"></span></div>
+    <section class="kb-card" id="kbHk"><div class="kb-t"><span>⌚ Apple Watch</span><span id="kbHkSt"></span></div><div class="kb-row"><button type="button" id="kbHkGo">Mit Apple Health verbinden</button></div><div id="kbHkBox"></div></section>
     <section class="kb-card" id="kbSleep"></section>
     <section class="kb-card" id="kbSport"></section>
     <section class="kb-card" id="kbFood"></section>
@@ -1219,7 +1220,7 @@ img{max-width:100%}
     const d=todayIdx(), dd=state.days[d]||{}, h=dd.h||{}, hk=hkOf(d), g=state.settings, w=WORKOUTS[rot(d)];
     const n=new Date(); $("kbDate").textContent=WD[n.getDay()]+", "+n.getDate()+". "+MO[n.getMonth()]+" · Tag "+d;
     const bar=(v,c)=>'<div class="kb-bar"><i style="width:'+Math.max(0,Math.min(100,v*100))+'%;background:'+c+';box-shadow:0 0 10px '+c+'"></i></div>';
-    const sl=hk.sleep;
+    const sl=hk.sleep; if($("kbHkSt")) $("kbHkSt").textContent=hk.at?"zuletzt "+new Date(hk.at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}):"noch keine Daten";
     $("kbSleep").innerHTML='<div class="kb-t"><span>😴 Schlaf</span><span>'+(h.sleep?'✓ Ziel':'Ziel 7+ Std')+'</span></div>'+
       '<div class="kb-big">'+(sl!=null?String(sl).replace(".",","):'–')+'<small>Std</small></div>'+bar((sl||0)/8,'#7a5cff')+
       '<div class="kb-row"><input id="kbSlIn" type="number" inputmode="decimal" step="0.5" min="0" max="16" placeholder="z. B. 7,5"><button type="button" id="kbSlOk">Eintragen</button></div>'+
@@ -1251,6 +1252,7 @@ img{max-width:100%}
     if(id==="kbSlOk"){ const v=parseFloat(String($("kbSlIn").value).replace(",",".")); if(!isFinite(v)) return; dd.hk.sleep=Math.round(v*10)/10; dd.h.sleep=v>=7; persist(); render(); toast("Schlaf eingetragen"); }
     if(id==="kbStOk"){ const v=parseInt($("kbStIn").value,10); if(!isFinite(v)) return; dd.hk.steps=v; if(v>=8000) dd.h.steps=true; persist(); render(); toast("Schritte eingetragen"); }
     if(id==="kbTrain"){ dd.h.train=!dd.h.train; persist(); render(); }
+    if(id==="kbHkGo"){ $("jvHk").click(); return; }
     if(id==="kbWatch"){ location.href="shortcuts://run-shortcut?name="+encodeURIComponent("Jarvis Health"); return; }
     if(id==="kbFoodAdd"){ const t=$("tEssen"); if(t) t.click(); }
   });
@@ -2309,7 +2311,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
       return {ok:true};
     }
     $("jvHk").onclick=async()=>{
-      const S=srv(); if(!S) return; const o=$("jvOff");
+      const S=srv(); if(!S){ toast("Erst mit dem Server koppeln"); return; } const o=$("kbHkBox")||$("jvOff");
       if(!confirm("Neuen Apple-Health-Schlüssel erstellen? Ein alter Kurzbefehl funktioniert danach nicht mehr.")) return;
       try{ const r=await fetch(S.url+"/api/health/key",{method:"POST",headers:{authorization:"Bearer "+S.token}}); const j=await r.json().catch(()=>({}));
         if(!r.ok||!j.key){ toast(r.status===404?"Server-Update nötig.":"Ging nicht"); return; }
