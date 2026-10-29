@@ -996,7 +996,7 @@ img{max-width:100%}
     "Du bist nicht müde. Du bist nur ungeübt im Durchziehen."
   ];
 
-  function rot(d){ const ov={1:2,2:0,3:1,4:3}; if(ov[d]!=null) return ov[d]; return (((d-5)%4)+4)%4; } /* Start 07.10.: Mi Beine, Do Brust+Rücken, Fr Arme, Sa Pause, dann im 4er-Rhythmus */
+  function rot(d){ const ov={1:2,2:0,3:1,4:3}; if(ov[d]!=null) return ov[d]; if(d>=23) return (d-23)%4; /* ab 29.10.: Do Brust+Rücken, Fr Arme, Sa Beine, So Pause */ return (((d-5)%4)+4)%4; } /* Start 07.10.: Mi Beine, Do Brust+Rücken, Fr Arme, Sa Pause, dann im 4er-Rhythmus */
   function dateOf(d){return new Date(START.getFullYear(),START.getMonth(),START.getDate()+d-1)}
   function todayIdx(){
     const n=new Date(); const t=new Date(n.getFullYear(),n.getMonth(),n.getDate());
