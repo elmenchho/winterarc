@@ -88,14 +88,14 @@ function berlin() {
 }
 function lagebild() {
   const st = load("state", null), S = st && st.data; if (!S) return "Keine Daten.";
-  const b = berlin(), day = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(2026, 9, 7)) / 864e5) + 1;
+  const b = berlin(), day = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(2026, 9, 29)) / 864e5) + 1;
   const dd = (S.days || {})[day] || {}, h = dd.h || {};
   const done = Object.keys(h).filter(k => h[k]);
   const todos = (S.todos || []).filter(t => !t.done).slice(0, 5).map(t => t.t);
   const food = (dd.food || []).reduce((a, x) => a + (+x.k || 0), 0), prot = (dd.food || []).reduce((a, x) => a + (+x.p || 0), 0);
   const sd = dd.sd || {}, slots = S.slots || {}, open = [];
   for (const k of ["mo", "vm", "nm", "ab"]) for (const x of (slots[k] || [])) if (!sd[x.id]) open.push(x.n);
-  return `Tag ${day}/274, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
+  return `Tag ${day}/252, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
 }
 const EDGE_BIN = process.env.JARVIS_EDGE || "/opt/jarvis/venv/bin/edge-tts";
 const EDGE_VOICES = [
@@ -297,61 +297,19 @@ const server = http.createServer(async (req, res) => {
       if (limited("hk:" + ip, 60, 3600e3)) return send(res, 429, { error: "Zu oft." });
       let b = {}; try { b = await body(req); } catch { return send(res, 400, { error: "kein JSON" }); }
       const n = v => { let t = String(v == null ? "" : v).replace(/[^0-9.,\-]/g, ""); if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, ""); t = t.replace(",", "."); const x = parseFloat(t); return isFinite(x) ? Math.round(x * 10) / 10 : null; };
-      // Listen: Kurzbefehl schickt mehrere Tage als Zeilen ("a\nb\nc") oder als Array
-      const L = v => Array.isArray(v) ? v : (v == null || v === "" ? [] : String(v).split(/\r?\n|;\s*(?=\d{4}-)/).map(s => s.trim()).filter(s => s !== ""));
-      const dayOfIso = s => { const m = /(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); if (!m) return null; return Math.round((Date.UTC(+m[1], m[2] - 1, +m[3]) - Date.UTC(2026, 9, 7)) / 864e5) + 1; };
-      const minOf = s => { const m = /(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})/.exec(String(s || "")); return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]) / 6e4 : null; };
-      const bz = berlin(), today = Math.round((Date.UTC(bz.y, bz.m - 1, bz.d) - Date.UTC(2026, 9, 7)) / 864e5) + 1;
+      const hkData = { steps: n(b.steps), sleep: n(b.sleep), kcal: n(b.kcal), protein: n(b.protein), active: n(b.active), workout: n(b.workout), weight: n(b.weight), at: Date.now() };
+      if (hkData.sleep != null && hkData.sleep > 24) hkData.sleep = Math.round(hkData.sleep / 6) / 10; // Minuten -> Stunden
+      const bz = berlin(), day = Math.round((Date.UTC(bz.y, bz.m - 1, bz.d) - Date.UTC(2026, 9, 29)) / 864e5) + 1;
       const st = load("state", { ts: 0, data: null }); if (!st.data) return send(res, 409, { error: "Noch keine App-Daten." });
-      const D = st.data; D.days = D.days || {};
-      const put = (day, obj) => {
-        if (day == null || day < 1 || day > today + 1) return;
-        const dd = D.days[day] = D.days[day] || { h: {} }; dd.h = dd.h || {};
-        dd.hk = Object.assign(dd.hk || {}, Object.fromEntries(Object.entries(obj).filter(([, v]) => v != null)), { at: Date.now() });
-        if (dd.hk.steps >= 8000) dd.h.steps = true;
-        if (dd.hk.sleep >= 7) dd.h.sleep = true;
-        if (dd.hk.protein >= ((D.settings && D.settings.protein) || 160)) dd.h.protein = true;
-        if (dd.hk.workout >= 25) dd.h.train = true;
-        if (dd.hk.weight && !dd.weight) dd.weight = dd.hk.weight;
-      };
-      const out = {};
-      const dates = L(b.d);
-      if (dates.length) {
-        // mehrere Tage: alle Listen sind gleich lang und von hinten ausgerichtet (letzter Eintrag = heute)
-        const F = { steps: L(b.steps), active: L(b.active), workout: L(b.workout), dist: L(b.dist), stand: L(b.stand), kcal: L(b.kcal), protein: L(b.protein) };
-        dates.forEach((ds, i) => {
-          const day = dayOfIso(ds), o = {}, back = dates.length - 1 - i;
-          for (const k in F) { const arr = F[k]; const v = arr.length ? n(arr[arr.length - 1 - back]) : null; if (v != null) o[k] = v; }
-          if (Object.keys(o).length) { put(day, o); out[day] = o; }
-        });
-      } else {
-        const one = { steps: n(b.steps), kcal: n(b.kcal), protein: n(b.protein), active: n(b.active), workout: n(b.workout), weight: n(b.weight), dist: n(b.dist), stand: n(b.stand) };
-        if (b.sleep != null && !b.sv) { one.sleep = n(b.sleep); if (one.sleep != null && one.sleep > 24) one.sleep = Math.round(one.sleep / 6) / 10; }
-        put(dayOfIso(b.date) || today, one); out[dayOfIso(b.date) || today] = one;
-      }
-      // Schlaf mit Phasen: sv = Werte (Kern/Tief/REM/Wach/Im Bett), ss = Start, se = Ende (yyyy-MM-ddTHH:mm)
-      const sv = L(b.sv), ss = L(b.ss), se = L(b.se);
-      if (sv.length && sv.length === ss.length && ss.length === se.length) {
-        const typ = v => /tief|deep/i.test(v) ? "deep" : /rem/i.test(v) ? "rem" : /kern|core/i.test(v) ? "core" : /wach|awake/i.test(v) ? "awake" : /bett|bed/i.test(v) ? "bed" : "asleep";
-        const segs = sv.map((v, i) => ({ t: typ(v), a: minOf(ss[i]), e: minOf(se[i]), ds: se[i] })).filter(x => x.a != null && x.e != null && x.e > x.a).sort((x, y) => x.a - y.a);
-        const nights = []; let cur = null;
-        for (const s of segs) { if (!cur || s.a - cur.e > 180) { cur = { s: [], a: s.a, e: s.e }; nights.push(cur); } cur.s.push(s); cur.e = Math.max(cur.e, s.e); }
-        for (const nt of nights) {
-          const ph = { deep: 0, rem: 0, core: 0, awake: 0, asleep: 0, bed: 0 };
-          const stg = nt.s.filter(x => x.t !== "bed"), base = stg.length ? stg : nt.s;
-          for (const x of nt.s) ph[x.t] += x.e - x.a;
-          const sleepMin = ph.deep + ph.rem + ph.core + ph.asleep || ph.bed;
-          if (sleepMin < 60) continue;
-          const a0 = Math.min(...base.map(x => x.a)), e0 = Math.max(...base.map(x => x.e));
-          const last = nt.s.reduce((p, x) => x.e > p.e ? x : p);
-          const hm = m => { const d = new Date(m * 6e4); return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0"); };
-          const o = { sleep: Math.round(sleepMin / 6) / 10, ph: { deep: ph.deep, rem: ph.rem, core: ph.core + ph.asleep, awake: ph.awake }, bed: hm(a0), wake: hm(e0),
-            seg: stg.length ? stg.map(x => [x.t === "asleep" ? "core" : x.t, x.a - a0, x.e - x.a]).slice(0, 200) : null };
-          const day = dayOfIso(last.ds); put(day, o); out[day] = Object.assign(out[day] || {}, { sleep: o.sleep, ph: o.ph });
-        }
-      }
+      const D = st.data; D.days = D.days || {}; const dd = D.days[day] = D.days[day] || { h: {} }; dd.h = dd.h || {};
+      dd.hk = Object.assign(dd.hk || {}, Object.fromEntries(Object.entries(hkData).filter(([, v]) => v != null)));
+      if (dd.hk.steps >= 8000) dd.h.steps = true;
+      if (dd.hk.sleep >= 7) dd.h.sleep = true;
+      if (dd.hk.protein >= ((D.settings && D.settings.protein) || 160)) dd.h.protein = true;
+      if (dd.hk.workout >= 25) dd.h.train = true;
+      if (dd.hk.weight && !dd.weight) dd.weight = dd.hk.weight;
       const ts = Date.now(); D._ts = ts; save("state", { ts, data: D, by: "health" });
-      return send(res, 200, { ok: true, tage: Object.keys(out).length, gespeichert: out });
+      return send(res, 200, { ok: true, tag: day, gespeichert: dd.hk });
     }
     const dev = auth(req);
     if (!dev) { limited("bad:" + ip, 30, 600e3); return send(res, 401, { error: "Nicht gekoppelt." }); }
