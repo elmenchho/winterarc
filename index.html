@@ -557,8 +557,8 @@ img{max-width:100%}
   <section class="hud" id="homeTop">
     <div class="hud-grid"></div>
     <div class="hud-top">
-      <div><div class="hud-k"><span id="hudSys">WINTER ARC</span></div><div class="ht-time" id="htTime">--:--</div><div class="ht-date" id="htDate"></div></div>
-      <div class="hud-tr"><div class="hud-k">PROTOKOLL</div><div class="hud-big" id="hudDay">1</div><div class="hud-k" id="hudDayOf">/ 252</div></div>
+      <div><div class="hud-k"><span id="hudSys">HEUTE</span></div><div class="ht-time" id="htTime">--:--</div><div class="ht-date" id="htDate"></div></div>
+      <div class="hud-tr"><div class="hud-k">PROTOKOLL</div><div class="hud-big" id="hudDay">1</div><div class="hud-k" id="hudDayOf">/ 251</div></div>
     </div>
     <div class="hud-core">
       <svg class="hud-ring" viewBox="0 0 300 300" aria-hidden="true">
@@ -602,8 +602,8 @@ img{max-width:100%}
   <section class="daystrip" id="dayStrip"></section>
   <header class="hero">
     <div>
-      <div class="eyebrow">Winter Arc · 29.10.2026 – 07.07.2027</div>
-      <div class="daynum" id="dayNum">1<small>/252</small></div>
+      <div class="eyebrow">30.10.2026 – 07.07.2027</div>
+      <div class="daynum" id="dayNum">1<small>/251</small></div>
       <div class="dateline" id="dateLine">Donnerstag, 1. Oktober</div>
     </div>
     <svg class="ring" viewBox="0 0 100 100" aria-label="Fortschritt heute">
@@ -703,7 +703,7 @@ img{max-width:100%}
   </section>
 
   <section class="sect">
-    <div class="sect-h"><h3>252 Tage</h3><span id="avg">Ø 0%</span></div>
+    <div class="sect-h"><h3>251 Tage</h3><span id="avg">Ø 0%</span></div>
     <div class="grid" id="grid"></div>
     <div class="legend">
       <span><i style="background:var(--surface-2)"></i>offen</span>
@@ -739,6 +739,37 @@ img{max-width:100%}
   </section>
 
   <button class="sos" id="sos">Ich will aufgeben</button>
+  <section class="card" id="settingsSect">
+    <div class="why-h"><span class="eyebrow">⚙ Einstellungen</span></div>
+  <details class="setup" id="syncBox">
+    <summary>Sync Handy ⇄ PC</summary>
+    <div class="in backup">
+      <div class="sub" id="syncInfo">Verbinde jedes Gerät einmal mit deinem Schlüssel. Danach ist alles auf Handy und PC gleich.</div>
+      <input id="syncTok" type="password" autocomplete="off" placeholder="GitHub-Schlüssel (github_pat_…)" style="width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">
+      <div class="btns"><button class="btn" id="syncOn" type="button">Verbinden</button><button class="btn ghost" id="syncNow" type="button">Jetzt syncen</button><button class="btn ghost" id="syncOff" type="button">Trennen</button></div>
+      <div class="sub" id="syncMsg"></div>
+      <div class="sub" style="margin-top:10px"><b>🔒 Tresor-Code</b> – deine Daten werden verschlüsselt, bevor sie dein Gerät verlassen. GitHub sieht nur Datensalat. Auf jedem weiteren Gerät einmal den Code vom ersten Gerät eingeben. Code geheim halten und sicher notieren (z. B. Passwort-App) – ohne ihn sind die Sync-Daten nicht lesbar.</div>
+      <div class="btns"><button class="btn ghost" id="vcShow" type="button">Code anzeigen</button></div>
+      <code id="vcOut" hidden style="display:block;word-break:break-all;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;user-select:all"></code>
+      <input id="vcIn" type="password" autocomplete="off" placeholder="Tresor-Code vom ersten Gerät" style="width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">
+      <div class="btns"><button class="btn ghost" id="vcUse" type="button">Code übernehmen</button></div>
+    </div>
+  </details>
+
+  <details class="setup" id="backupBox">
+    <summary>Backup (deine Daten sichern)</summary>
+    <div class="in backup">
+      <div class="sub">Deine Daten liegen nur auf diesem Handy. Mach ab und zu ein Backup, z. B. jeden Sonntag in deine Notizen.</div>
+      <div class="btns"><button class="btn" id="bkShare" type="button">Backup sichern</button></div>
+      <label class="sub" for="bkIn">Backup wiederherstellen (Text einfügen):</label>
+      <textarea id="bkIn" placeholder="Backup-Text hier einfügen"></textarea>
+      <div class="btns"><button class="btn ghost" id="bkRestore" type="button">Wiederherstellen</button></div>
+      <div class="sub" id="bkMsg"></div>
+    </div>
+  </details>
+
+  <div class="sync" id="sync">Gespeichert auf diesem Handy</div>
+  </section>
   </div>
 
   <div class="panel" id="pKoerper" hidden>
@@ -927,34 +958,6 @@ img{max-width:100%}
     </details>
   </div>
 
-  <details class="setup" id="syncBox">
-    <summary>Sync Handy ⇄ PC</summary>
-    <div class="in backup">
-      <div class="sub" id="syncInfo">Verbinde jedes Gerät einmal mit deinem Schlüssel. Danach ist alles auf Handy und PC gleich.</div>
-      <input id="syncTok" type="password" autocomplete="off" placeholder="GitHub-Schlüssel (github_pat_…)" style="width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">
-      <div class="btns"><button class="btn" id="syncOn" type="button">Verbinden</button><button class="btn ghost" id="syncNow" type="button">Jetzt syncen</button><button class="btn ghost" id="syncOff" type="button">Trennen</button></div>
-      <div class="sub" id="syncMsg"></div>
-      <div class="sub" style="margin-top:10px"><b>🔒 Tresor-Code</b> – deine Daten werden verschlüsselt, bevor sie dein Gerät verlassen. GitHub sieht nur Datensalat. Auf jedem weiteren Gerät einmal den Code vom ersten Gerät eingeben. Code geheim halten und sicher notieren (z. B. Passwort-App) – ohne ihn sind die Sync-Daten nicht lesbar.</div>
-      <div class="btns"><button class="btn ghost" id="vcShow" type="button">Code anzeigen</button></div>
-      <code id="vcOut" hidden style="display:block;word-break:break-all;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;user-select:all"></code>
-      <input id="vcIn" type="password" autocomplete="off" placeholder="Tresor-Code vom ersten Gerät" style="width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">
-      <div class="btns"><button class="btn ghost" id="vcUse" type="button">Code übernehmen</button></div>
-    </div>
-  </details>
-
-  <details class="setup" id="backupBox">
-    <summary>Backup (deine Daten sichern)</summary>
-    <div class="in backup">
-      <div class="sub">Deine Daten liegen nur auf diesem Handy. Mach ab und zu ein Backup, z. B. jeden Sonntag in deine Notizen.</div>
-      <div class="btns"><button class="btn" id="bkShare" type="button">Backup sichern</button></div>
-      <label class="sub" for="bkIn">Backup wiederherstellen (Text einfügen):</label>
-      <textarea id="bkIn" placeholder="Backup-Text hier einfügen"></textarea>
-      <div class="btns"><button class="btn ghost" id="bkRestore" type="button">Wiederherstellen</button></div>
-      <div class="sub" id="bkMsg"></div>
-    </div>
-  </details>
-
-  <div class="sync" id="sync">Gespeichert auf diesem Handy</div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -988,8 +991,8 @@ img{max-width:100%}
 
 <script>
 (function(){
-  const START = new Date(2026, 9, 29); // 29.10.2026 (Neustart 2)
-  const TOTAL = 252; // bis 07.07.2027
+  const START = new Date(2026, 9, 30); // 30.10.2026 (Neustart 3)
+  const TOTAL = 251; // 30.10.2026 bis 07.07.2027
   const DAY = 86400000;
   const WD = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
   const MO = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
@@ -1021,9 +1024,9 @@ img{max-width:100%}
   const PHASES = [
     {from:1,to:30,t:"Ideen testen",s:"Ideen anschauen und testen. Am 27.11. entscheidest du dich für genau eine."},
     {from:31,to:120,t:"Aufbauen",s:"Nur noch die eine Idee bauen. Keine neuen anfangen."},
-    {from:121,to:252,t:"Kunden & Wachstum",s:"Raus damit: erste Kunden, erster Umsatz, dann skalieren."}
+    {from:121,to:251,t:"Kunden & Wachstum",s:"Raus damit: erste Kunden, erster Umsatz, dann skalieren."}
   ];
-  const CHECKPOINTS = {252:"Finale: Vorher/Nachher"}; for(let d=30; d<252; d+=30) CHECKPOINTS[d]=d%60?"Checkpoint: Fotos + Gewicht":"Checkpoint: Fotos, Gewicht, Kraftwerte";
+  const CHECKPOINTS = {251:"Finale: Vorher/Nachher"}; for(let d=30; d<251; d+=30) CHECKPOINTS[d]=d%60?"Checkpoint: Fotos + Gewicht":"Checkpoint: Fotos, Gewicht, Kraftwerte";
 
   const MANTRAS = [
     "Motivation kommt und geht. Der Plan bleibt.",
@@ -1040,7 +1043,7 @@ img{max-width:100%}
     "Du bist nicht müde. Du bist nur ungeübt im Durchziehen."
   ];
 
-  function rot(d){ return (((d-1)%4)+4)%4; } /* Neustart 29.10.: Do Brust+Rücken, Fr Arme, Sa Beine, So Pause */
+  function rot(d){ return ((d%4)+4)%4; } /* Neustart 30.10.: Fr Arme, Sa Beine, So Pause, Mo Brust+Rücken */
   function dateOf(d){return new Date(START.getFullYear(),START.getMonth(),START.getDate()+d-1)}
   function todayIdx(){
     const n=new Date(); const t=new Date(n.getFullYear(),n.getMonth(),n.getDate());
@@ -1062,6 +1065,8 @@ img{max-width:100%}
     }
     if(!s.arc3){ const nd={}, arch={}; for(const k in s.days){ const d=+k; if(d>=23) nd[d-22]=s.days[k]; else arch[k]=s.days[k]; }
       s.days=nd; s.archive=Object.assign(s.archive||{},{arc2:arch}); s.arc3=1; if(s.focus) s.focus.day=(s.focus.day||23)-22; }
+    if(!s.arc4){ const nd={}, arch={}; for(const k in s.days){ const d=+k; if(d>=2) nd[d-1]=s.days[k]; else arch[k]=s.days[k]; }
+      s.days=nd; s.archive=Object.assign(s.archive||{},{arc3:arch}); s.arc4=1; if(s.focus) s.focus.day=(s.focus.day||2)-1; }
     if(s.archive&&s.archive.arc1){ delete s.archive.arc1; if(!Object.keys(s.archive).length) delete s.archive; }
     s.settings=Object.assign({kcal:2800,protein:160,foodWeek:50},s.settings||{});
     if(!Array.isArray(s.supps)) s.supps=[{id:"crea",n:"Kreatin",d:"4 g",t:"Morgens"}];
@@ -1097,7 +1102,7 @@ img{max-width:100%}
     return s;
   }
   if(!window.__vault){ try{const c=localStorage.getItem(LS); if(c){const p=JSON.parse(c); if(p&&p.days) state=p;}}catch(e){} }
-  const _wasArc2=!!state.arc3; norm(state);
+  const _wasArc2=!!state.arc4; norm(state);
   function persistLocal(){ if(window.__vault){ window.__vault.saveState(state); return; } try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){} }
   if(!_wasArc2&&Object.keys(state.days).length) persistLocal();
   window.__applyState=o=>{ if(!o||!o.days) return; state=norm(o); try{ render(); renderEditors(); if(window.__jarvisRedraw) window.__jarvisRedraw(); }catch(e){} };
@@ -2025,7 +2030,7 @@ img{max-width:100%}
       const w=state.why||{};
       const gs=goalSaved();
       return [
-        "JETZT: "+WD[now.getDay()]+", "+now.toLocaleDateString("de-DE")+", "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0")+" Uhr. Winter Arc Tag "+d+" von "+TOTAL+" (29.10.2026–07.07.2027). Aktueller Slot: "+(SLOTS.find(s=>s[0]===curSlot())||[])[1]+".",
+        "JETZT: "+WD[now.getDay()]+", "+now.toLocaleDateString("de-DE")+", "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0")+" Uhr. Winter Arc Tag "+d+" von "+TOTAL+" (30.10.2026–07.07.2027). Aktueller Slot: "+(SLOTS.find(s=>s[0]===curSlot())||[])[1]+".",
         "TRAINING HEUTE: "+WORKOUTS[rot(d)].name+" ("+WORKOUTS[rot(d)].ex.map(e=>e[0]+" "+e[1]).join(", ")+"). MORGEN: "+WORKOUTS[rot(d+1)].name+". Gym am besten nachmittags vor 16 Uhr.",
         "HABITS HEUTE ("+HABITS.filter(x=>h[x.id]).length+"/"+HABITS.length+"):\n"+habits,
         "GERADE (Fokus auf der Startseite): "+(curFocus()?((FOCUS[curFocus().k]||FOCUS.frei).l+(curFocus().what?" – "+curFocus().what:"")+" seit "+new Date(curFocus().at).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})):"nichts gesetzt"),
@@ -2040,7 +2045,7 @@ img{max-width:100%}
       ].join("\n\n");
     }
 
-    const RULES=`Du bist JARVIS, der persönliche KI-Assistent von Luis. Er ist "Boss" – sprich ihn immer so an, nie "Kommandant". Er wohnt in Augsburg und zieht gerade seinen Winter Arc durch (29.10.2026 bis 07.07.2027): Disziplin, Gym (Arnold-Split), Ernährung, Englisch, Business aufbauen, Geld in den Griff kriegen, Ziel Lamborghini Urus.
+    const RULES=`Du bist JARVIS, der persönliche KI-Assistent von Luis. Er ist "Boss" – sprich ihn immer so an, nie "Kommandant". Er wohnt in Augsburg und zieht gerade seinen Winter Arc durch (30.10.2026 bis 07.07.2027): Disziplin, Gym (Arnold-Split), Ernährung, Englisch, Business aufbauen, Geld in den Griff kriegen, Ziel Lamborghini Urus.
 
 WIE DU REDEST – das Wichtigste:
 ER ist der Boss – du arbeitest für ihn. Du gibst ihm keine Befehle, du kommandierst ihn nicht herum, du schlägst höflich vor und überlässt ihm die Entscheidung („Wenn du magst, …“, „Ich würde vorschlagen …“, „Soll ich …?“).
