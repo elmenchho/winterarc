@@ -139,8 +139,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .sheet h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:40px;line-height:.9;text-transform:uppercase}
 .sheet .big{font-family:var(--f-display);font-weight:800;font-size:22px;line-height:1.1}
 /* Tabs */
-.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;grid-template-columns:repeat(6,1fr);gap:3px;background:var(--surface-2);padding:4px;border-radius:12px;box-shadow:0 6px 16px -10px rgba(0,0,0,.35)}
-.tab{border:0;background:transparent;border-radius:9px;padding:9px 1px;font-weight:700;font-size:11.5px;letter-spacing:-.01em;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;overflow-x:auto;scrollbar-width:none;gap:3px;background:var(--surface-2);padding:4px;border-radius:12px;box-shadow:0 6px 16px -10px rgba(0,0,0,.35)}
+.tab{flex:1 0 auto;border:0;background:transparent;border-radius:9px;padding:9px 5px;font-weight:700;font-size:11px;letter-spacing:-.01em;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tab .n{display:inline-block;min-width:16px;margin-left:3px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:10.5px;line-height:16px}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--fg)}
 .panel{display:flex;flex-direction:column;gap:22px}
@@ -464,6 +464,34 @@ details.setup .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px
 .focusbar .fk button{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:999px;padding:7px 11px;font:inherit;font-size:13px}
 .focusbar .fall{position:absolute;right:12px;bottom:12px;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline}
 #pHeute.clean > .fhide{display:none!important}
+#homeTop .hud-core,#homeTop #htDay,#homeTop .hud-stats,#homeTop .hud-dir{display:none!important}
+#pMehr #focusBar,#pMehr #dayStrip,#pMehr .hero,#pMehr .stats,#pMehr #plan{display:none!important}
+.hm-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hm-since{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.hm-now{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.hm-now.off{font-size:15px;font-weight:500;color:var(--muted)}
+.hm-chips{display:flex;flex-wrap:wrap;gap:6px}
+.hm-chips button{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:999px;padding:7px 12px;font:inherit;font-size:13px}
+.hm-chips button[aria-pressed="true"]{border-color:var(--ice-3,#3db2ff);background:color-mix(in srgb,var(--ice-3,#3db2ff) 18%,transparent)}
+.hm-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hm-stats>div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.hm-stats b{font-size:26px;font-weight:800}
+.hm-stats span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.dp-b{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--line)}
+.dp-b:first-child{border-top:0;padding-top:0}
+.dp-bh{display:flex;justify-content:space-between;align-items:center;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.dp-b.now .dp-bh{color:var(--fg)}
+.dp-b.now .dp-bh b::after{content:" · jetzt";color:var(--ice-3,#3db2ff)}
+.dp-t{display:flex;align-items:center;gap:8px}
+.dp-t .dp-n{flex:1;text-align:left;border:0;background:none;color:var(--fg);font:inherit;font-size:15px;padding:6px 0;display:flex;gap:10px;align-items:center}
+.dp-t .dp-n::before{content:"";flex:none;width:18px;height:18px;border:1.5px solid var(--line);border-radius:6px}
+.dp-t.done .dp-n{color:var(--muted);text-decoration:line-through}
+.dp-t.done .dp-n::before{background:var(--done);border-color:var(--done)}
+.dp-t .dp-x,.dp-t .dp-mv{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:6px 4px}
+.dp-add{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;text-align:left;padding:4px 0}
+.dp-in{display:flex;gap:6px}.dp-in input{flex:1}
+.dp-empty{font-size:13px;color:var(--muted)}
+
 body:has(#pHeute.clean:not([hidden])) :is(#syncBox,#backupBox,#sync){display:none!important}
 #jvLog,#jvIn,#jvSend,#jvMic,#jvVoice,#jvVoiceSel{display:none!important}
 .jv-bar{background:none!important;border:0!important;box-shadow:none!important;justify-content:center;min-height:0}
@@ -522,6 +550,7 @@ img{max-width:100%}
     <button class="tab" role="tab" id="tRez" data-p="pRezepte" aria-selected="false">Rezepte</button>
     <button class="tab" role="tab" id="tShop" data-p="pEinkauf" aria-selected="false">Einkauf</button>
     <button class="tab" role="tab" id="tGeld" data-p="pGeld" aria-selected="false">Geld</button>
+    <button class="tab" role="tab" id="tMehr" data-p="pMehr" aria-selected="false">Mehr</button>
     <button class="tab jv-tab" role="tab" id="tJarvis" data-p="pJarvis" aria-selected="false">Jarvis</button>
   </div>
   <div class="panel" id="pHeute">
@@ -553,6 +582,22 @@ img{max-width:100%}
     <div class="hud-dir"><span class="hud-k">DIREKTIVE DES TAGES</span><p id="hqText"></p></div>
     
   </section>
+  <section class="card hm" id="nowCard">
+    <div class="hm-h"><span class="eyebrow">Was mache ich gerade</span><span class="hm-since" id="nowSince"></span></div>
+    <div class="hm-now" id="nowWhat"></div>
+    <div class="hm-chips" id="nowChips"></div>
+  </section>
+  <div class="hm-stats">
+    <div><b id="hmStreak">0</b><span>Streak</span></div>
+    <div><b id="hmPerfect">0</b><span>Perfekte Tage</span></div>
+  </div>
+  <section class="card hm" id="dayPlan">
+    <div class="hm-h"><span class="eyebrow">Tagesplan</span></div>
+    <div id="dpBlocks"></div>
+  </section>
+  </div>
+
+  <div class="panel" id="pMehr" hidden>
   <section class="focusbar" id="focusBar" aria-live="polite"></section>
   <section class="daystrip" id="dayStrip"></section>
   <header class="hero">
@@ -571,7 +616,6 @@ img{max-width:100%}
   <div class="stats">
     <div class="stat"><b id="stStreak">0</b><span>Streak (Tage)</span></div>
     <div class="stat"><b id="stPerfect">0</b><span>Perfekte Tage</span></div>
-    <div class="stat"><b id="stLeft">89</b><span>Tage übrig</span></div>
   </div>
 
   <button class="goalmini" id="goalMini" type="button">
@@ -1121,7 +1165,7 @@ img{max-width:100%}
     if(/essen|frühstück|mittag|snack|meal|kochen/.test(n)) return "essen";
     if(/tagebuch|schlafen|abend-check|handy weg/.test(n)) return "abend";
     return "frei"; }
-  function curFocus(){ const f=state.focus; if(!f||f.day!==todayIdx()||Date.now()-(f.at||0)>8*3600e3||f.k==="frei"&&!f.what) return null; return f; }
+  function curFocus(){ const f=state.focus; if(!f||f.day!==todayIdx()||Date.now()-(f.at||0)>12*3600e3) return null; return f; }
   function setFocus(k,what,sid){ state.focus=k?{k:FOCUS[k]?k:"frei",what:String(what||"").slice(0,80),sid:sid||null,at:Date.now(),day:todayIdx()}:null; persist(); render(); }
   function nextItem(){ const d=todayIdx(), S=daySlots(d), sd=(state.days[d]||{}).sd||{}, cs=curSlot(), ci=SLOTS.findIndex(s=>s[0]===cs);
     for(let i=ci;i<SLOTS.length;i++){ const it=(S[SLOTS[i][0]]||[]).find(x=>!sd[x.id]); if(it) return {it,slot:SLOTS[i][1]}; } return null; }
@@ -1275,7 +1319,7 @@ img{max-width:100%}
     let perfect=0,sum=0,cnt=0;
     for(let d=1; d<=tc; d++){ if(pct(d)===1) perfect++; sum+=pct(d); cnt++; }
     $("stStreak").textContent=streak; $("stPerfect").textContent=perfect;
-    $("stLeft").textContent=Math.max(0,TOTAL-Math.max(ti,0));
+    $("hmStreak").textContent=streakNow(); $("hmPerfect").textContent=perfect;
     $("avg").textContent="Ø "+(cnt?Math.round(sum/cnt*100):0)+"%";
 
     // nav
@@ -1326,9 +1370,53 @@ img{max-width:100%}
     }
     $("grid").innerHTML=g;
     if(!editing) renderWhy(); else $("mantra").innerHTML='<span>Satz für Tag '+sel+'</span>'+esc(MANTRAS[(sel-1)%MANTRAS.length]);
-    renderPlan(); renderTodos(); renderJournal(); renderGoal(); renderSupps(); renderFood(); renderMoney(); renderRecipes(); renderShop(); renderFocus(); renderBody();
+    renderPlan(); renderTodos(); renderJournal(); renderGoal(); renderSupps(); renderFood(); renderMoney(); renderRecipes(); renderShop(); renderFocus(); renderBody(); renderHome();
   }
 
+
+
+  // ---------- Startseite: Jetzt + Tagesplan (3 Blöcke) ----------
+  const BLK=[["vm","Vormittag",0,12*60],["nm","Nachmittag",12*60,18*60],["ab","Abend",18*60,24*60]], BMAX=3;
+  let dpAdd=null;
+  function curBlk(){const n=new Date(),m=n.getHours()*60+n.getMinutes(); return (BLK.find(b=>m>=b[2]&&m<b[3])||BLK[0])[0];}
+  function blocks(d){ const dd=ensure(d);
+    if(!dd.blk){ const r=rot(d); dd.blk={vm:[],nm:[{id:"g"+d,n:r===3?"Spaziergang 30–60 Min":"Gym: "+WORKOUTS[r].name}],ab:[]}; }
+    return dd.blk; }
+  function hm2(x){return new Date(x).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});}
+  function durTxt(ms){const m=Math.max(0,Math.round(ms/60000)); return m<60?m+" Min":Math.floor(m/60)+" Std "+String(m%60).padStart(2,"0");}
+  function renderNow(){
+    const f=curFocus(), F=f&&(FOCUS[f.k]||FOCUS.frei);
+    $("nowWhat").className="hm-now"+(f?"":" off");
+    $("nowWhat").textContent=f?F.ic+" "+(f.k==="gym"?"Gym · "+WORKOUTS[rot(todayIdx())].name:(f.what||F.l)):"Nichts ausgewählt";
+    $("nowSince").textContent=f?"seit "+hm2(f.at)+" · "+durTxt(Date.now()-f.at):"";
+    $("nowChips").innerHTML=Object.keys(FOCUS).map(k=>'<button type="button" data-nk="'+k+'" aria-pressed="'+!!(f&&f.k===k)+'">'+FOCUS[k].ic+' '+FOCUS[k].l.split(" /")[0]+'</button>').join("");
+  }
+  function renderDayPlan(){
+    const d=todayIdx(), B=blocks(d), cb=curBlk();
+    $("dpBlocks").innerHTML=BLK.map(([k,name],i)=>{ const L=B[k]||[], nx=i<2?BLK[i+1][1]:"Morgen";
+      return '<div class="dp-b'+(k===cb?' now':'')+'"><div class="dp-bh"><b>'+name+'</b><span>'+L.filter(x=>x.done).length+'/'+L.length+'</span></div>'+
+        (L.length?'':'<div class="dp-empty">Frei</div>')+
+        L.map((x,j)=>'<div class="dp-t'+(x.done?' done':'')+'"><button class="dp-n" type="button" data-dt="'+k+'|'+j+'">'+esc(x.n)+'</button>'+
+          (x.done?'':'<button class="dp-mv" type="button" data-dm="'+k+'|'+j+'" aria-label="Nach '+nx+' schieben">→ '+nx+'</button>')+
+          '<button class="dp-x" type="button" data-dx="'+k+'|'+j+'" aria-label="Entfernen">×</button></div>').join("")+
+        (L.length<BMAX?(dpAdd===k?'<form class="dp-in" data-df="'+k+'"><input maxlength="60" placeholder="Hauptaufgabe" aria-label="Neue Aufgabe '+name+'"><button class="btn sm" type="submit">OK</button></form>':'<button class="dp-add" type="button" data-da="'+k+'">+ Aufgabe</button>'):'')+'</div>';
+    }).join("");
+    if(dpAdd){ const i=$("dpBlocks").querySelector('form input'); if(i) i.focus(); }
+  }
+  function renderHome(){ if(!$("nowCard")) return; renderNow(); renderDayPlan(); }
+  $("nowChips").addEventListener("click",e=>{const b=e.target.closest("[data-nk]"); if(!b) return; const f=curFocus(); setFocus(f&&f.k===b.dataset.nk?null:b.dataset.nk,"");});
+  $("dpBlocks").addEventListener("submit",e=>{e.preventDefault(); const k=e.target.dataset.df, v=e.target.querySelector("input").value.trim(); dpAdd=null;
+    if(v){ const B=blocks(todayIdx()); if(B[k].length<BMAX) B[k].push({id:"t"+Date.now().toString(36),n:v}); persist(); } renderDayPlan();});
+  $("dpBlocks").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b||b.type==="submit") return; const d=todayIdx(), B=blocks(d);
+    if(b.dataset.da){ dpAdd=b.dataset.da; renderDayPlan(); return; }
+    const [k,j]=(b.dataset.dt||b.dataset.dm||b.dataset.dx||"|").split("|"), x=B[k]&&B[k][+j]; if(!x) return;
+    if(b.dataset.dt){ x.done=!x.done; if(x.done&&/^gym/i.test(x.n)){ const dd=ensure(d); dd.h.train=true; } }
+    else if(b.dataset.dx){ B[k].splice(+j,1); }
+    else { const i=BLK.findIndex(z=>z[0]===k), T=i<2?B[BLK[i+1][0]]:blocks(d+1).vm, nm=i<2?BLK[i+1][1]:"Morgen";
+      if(T.length>=BMAX){ toast(nm+" ist voll (max "+BMAX+")."); return; }
+      B[k].splice(+j,1); T.push(x); toast("→ "+nm); }
+    persist(); render(); });
+  setInterval(()=>{ if(!document.hidden&&!dpAdd) renderHome(); },30e3);
 
   // ---------- Tagesplan (Slots) ----------
   const SLOTS=[["mo","Morgens",0,8*60],["vm","Vormittag",8*60,12*60],["nm","Nachmittag",12*60,18*60],["ab","Abend",18*60,24*60]];
@@ -2426,7 +2514,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
   // ---------- Tabs ----------
   function showTab(p){
     document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.p===p)));
-    ["pHeute","pKoerper","pEssen","pRezepte","pEinkauf","pGeld","pJarvis"].forEach(id=>$(id).hidden=id!==p);
+    ["pHeute","pKoerper","pEssen","pRezepte","pEinkauf","pGeld","pMehr","pJarvis"].forEach(id=>$(id).hidden=id!==p);
     try{localStorage.setItem(LS+"-tab",p);}catch(e){}
   }
   document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{showTab(t.dataset.p); window.scrollTo(0,0);});
@@ -2460,7 +2548,7 @@ Unten steht das aktuelle Lagebild aus seiner App. Es ist die Wahrheit.`;
     editing=false; persist(); renderWhy();
   };
   $("sos").onclick=()=>{
-    const ti=clamp(todayIdx()), st=+$("stStreak").textContent, left=+$("stLeft").textContent;
+    const ti=clamp(todayIdx()), st=+$("stStreak").textContent, left=Math.max(0,TOTAL-ti);
     const w=whyHtml();
     $("modalBody").innerHTML=
       (w?'<div class="why" style="border:0;padding:0">'+w+'</div>':'<p class="empty">Du hast noch kein Warum aufgeschrieben. Mach das, sobald du wieder klar bist.</p>')+
