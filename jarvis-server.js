@@ -88,14 +88,14 @@ function berlin() {
 }
 function lagebild() {
   const st = load("state", null), S = st && st.data; if (!S) return "Keine Daten.";
-  const b = berlin(), day = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(2026, 9, 29)) / 864e5) + 1;
+  const b = berlin(), day = Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(2026, 9, 30)) / 864e5) + 1;
   const dd = (S.days || {})[day] || {}, h = dd.h || {};
   const done = Object.keys(h).filter(k => h[k]);
   const todos = (S.todos || []).filter(t => !t.done).slice(0, 5).map(t => t.t);
   const food = (dd.food || []).reduce((a, x) => a + (+x.k || 0), 0), prot = (dd.food || []).reduce((a, x) => a + (+x.p || 0), 0);
   const sd = dd.sd || {}, slots = S.slots || {}, open = [];
   for (const k of ["mo", "vm", "nm", "ab"]) for (const x of (slots[k] || [])) if (!sd[x.id]) open.push(x.n);
-  return `Tag ${day}/252, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
+  return `Tag ${day}/251, ${b.hm} Uhr. Erledigte Habits: ${done.join(", ") || "keine"}. Offene Tagesplan-Punkte: ${open.slice(0, 8).join("; ") || "keine"}. Offene To-dos: ${todos.join("; ") || "keine"}. Essen: ${food} kcal, ${prot} g Eiweiß.`;
 }
 const EDGE_BIN = process.env.JARVIS_EDGE || "/opt/jarvis/venv/bin/edge-tts";
 const EDGE_VOICES = [
@@ -299,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       const n = v => { let t = String(v == null ? "" : v).replace(/[^0-9.,\-]/g, ""); if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, ""); t = t.replace(",", "."); const x = parseFloat(t); return isFinite(x) ? Math.round(x * 10) / 10 : null; };
       const hkData = { steps: n(b.steps), sleep: n(b.sleep), kcal: n(b.kcal), protein: n(b.protein), active: n(b.active), workout: n(b.workout), weight: n(b.weight), at: Date.now() };
       if (hkData.sleep != null && hkData.sleep > 24) hkData.sleep = Math.round(hkData.sleep / 6) / 10; // Minuten -> Stunden
-      const bz = berlin(), day = Math.round((Date.UTC(bz.y, bz.m - 1, bz.d) - Date.UTC(2026, 9, 29)) / 864e5) + 1;
+      const bz = berlin(), day = Math.round((Date.UTC(bz.y, bz.m - 1, bz.d) - Date.UTC(2026, 9, 30)) / 864e5) + 1;
       const st = load("state", { ts: 0, data: null }); if (!st.data) return send(res, 409, { error: "Noch keine App-Daten." });
       const D = st.data; D.days = D.days || {}; const dd = D.days[day] = D.days[day] || { h: {} }; dd.h = dd.h || {};
       dd.hk = Object.assign(dd.hk || {}, Object.fromEntries(Object.entries(hkData).filter(([, v]) => v != null)));
